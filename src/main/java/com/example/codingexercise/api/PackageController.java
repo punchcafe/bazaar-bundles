@@ -1,6 +1,7 @@
-package com.example.codingexercise.controller;
+package com.example.codingexercise.api;
 
-import com.example.codingexercise.model.ProductPackage;
+import com.example.codingexercise.api.schema.CreateProductPackageRequest;
+import com.example.codingexercise.api.schema.ProductPackage;
 import com.example.codingexercise.repository.PackageRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,12 +19,17 @@ public class PackageController {
     }
 
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
-    public ProductPackage create(@RequestBody ProductPackage newProductPackage) {
-        return packageRepository.create(newProductPackage.getName(), newProductPackage.getDescription(), newProductPackage.getProductIds());
+    public ProductPackage create(@RequestBody CreateProductPackageRequest request) {
+        final var createdProductPackage = packageRepository.create(
+                request.getName(),
+                request.getDescription(),
+                request.getProductIds()
+        );
+        return ProductPackage.fromModel(createdProductPackage);
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
     public ProductPackage get(@PathVariable String id) {
-        return packageRepository.get(id);
+        return ProductPackage.fromModel(packageRepository.get(id));
     }
 }
