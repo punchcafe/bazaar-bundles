@@ -21,9 +21,9 @@ public class PackageController {
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
     public ProductPackage create(@RequestBody CreateProductPackageRequest request) {
         final var createdProductPackage = packageRepository.create(
-                request.getName(),
-                request.getDescription(),
-                request.getProductIds()
+                request.name(),
+                request.description(),
+                request.productIds()
         );
         return ProductPackage.fromModel(createdProductPackage);
     }
