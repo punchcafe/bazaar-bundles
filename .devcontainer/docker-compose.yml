@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    image: openjdk:26-ea-17-slim-trixie
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    ports:
+      - '8080:8080'
+  
+  mysql:
+    image: 'mysql:latest'
+    environment:
+      - 'MYSQL_ROOT_PASSWORD=guest'
+    ports:
+      - '3306:3306'
