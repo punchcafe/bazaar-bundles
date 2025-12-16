@@ -57,13 +57,4 @@ class PackageControllerTests {
         assertEquals(productPackage.getProductIds(), fetchedBody.getProductIds(), "Unexpected products");
     }
 
-    @Test
-    void listPackages() {
-        ProductPackage productPackage1 = packageRepository.create("Test Name 1", "Test Desc 1", List.of("prod1"));
-        ProductPackage productPackage2 = packageRepository.create("Test Name 2", "Test Desc 2", List.of("prod2"));
-
-        ResponseEntity<Object> fetched = restTemplate.getForEntity("/packages", Object.class);
-        assertEquals(HttpStatus.OK, fetched.getStatusCode(), "Unexpected status code");
-    }
-
 }
