@@ -1,1 +1,5 @@
-{"image": "openjdk:26-ea-17-slim-trixie"}
+{
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}
