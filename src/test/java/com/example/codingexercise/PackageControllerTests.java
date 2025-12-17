@@ -33,12 +33,15 @@ class PackageControllerTests {
         this.packageRepository = packageRepository;
     }
 
+    // TODO: add validations for invalid and null parameters
+
     @Test
     void createPackage_returns201AndCreatedPackage() {
         // Arrange
         final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of())
                 .build();
 
         // Act
@@ -49,7 +52,62 @@ class PackageControllerTests {
         assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
         assertNotNull(responseBody);
         assertEquals(TEST_PRODUCT_NAME, responseBody.name());
+        assertEquals(List.of(), responseBody.productIds());
         assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
+    }
+
+    void createPackage_returnsPersistedProductIdsInResponse() {
+        // Arrange
+        final var request = CreatePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b", "c"))
+                .build();
+
+        // Act
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource responseBody = response.getBody();
+
+        // Assert
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
+        assertEquals(List.of("a", "b", "c"), responseBody.productIds());
+    }
+
+    void createPackage_persistsProductIds() {
+        // Arrange
+        final var request = CreatePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b", "c", "d"))
+                .build();
+
+        // Act
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource responseBody = response.getBody();
+
+        // Assert
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
+        assertEquals(List.of("a", "b", "c"), responseBody.productIds());
+    }
+
+    @Test
+    void createPackageWithProductIds_andGetPackage_returnsCreatedProductIds() {
+        // Arrange
+        final var request = CreatePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("hello", "world"))
+                .build();
+
+        // Act
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource createdBody = response.getBody();
+        final var createdId = createdBody.id();
+        final var getProductPackageResponse = GET_productPackage(createdId);
+
+        // Assert
+        assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
+        assertEquals(List.of("hello", "world"), getProductPackageResponse.getBody().productIds());
     }
 
     @Test
@@ -58,6 +116,7 @@ class PackageControllerTests {
         final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of())
                 .build();
 
         // Act
@@ -137,7 +196,7 @@ class PackageControllerTests {
                 .description(description)
                 .build();
         Package createdPackage = packageRepository.save(newPackage);
-        return PackageResource.fromModel(createdPackage);
+        return PackageResource.fromModel(createdPackage, List.of());
     }
 
 }
