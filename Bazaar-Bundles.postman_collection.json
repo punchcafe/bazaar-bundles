@@ -1,0 +1,45 @@
+{
+	"info": {
+		"_postman_id": "4964fe60-efc2-43e9-9c11-e0634f8afd35",
+		"name": "Bazaar-Bundles",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "9313305"
+	},
+	"item": [
+		{
+			"name": "UpdatePackage",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"More Swords!\",\r\n    \"description\": \"A collection of swords.\",\r\n    \"productIds\": [\"sword-0\", \"sword-1\", \"sword-2\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/packages/5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"packages",
+						"5"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
