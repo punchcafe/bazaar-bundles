@@ -56,6 +56,7 @@ class PackageControllerTests {
         assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
     }
 
+    @Test
     void createPackage_returnsPersistedProductIdsInResponse() {
         // Arrange
         final var request = CreatePackageRequest.builder()
@@ -73,6 +74,7 @@ class PackageControllerTests {
         assertEquals(List.of("a", "b", "c"), responseBody.productIds());
     }
 
+    @Test
     void createPackage_persistsProductIds() {
         // Arrange
         final var request = CreatePackageRequest.builder()
@@ -87,7 +89,7 @@ class PackageControllerTests {
 
         // Assert
         assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
-        assertEquals(List.of("a", "b", "c"), responseBody.productIds());
+        assertEquals(List.of("a", "b", "c", "d"), responseBody.productIds());
     }
 
     @Test
