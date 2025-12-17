@@ -22,6 +22,7 @@ public class PackageController {
         this.packageRepository = packageRepository;
     }
 
+    @ResponseStatus(code=HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
     public PackageResource create(@RequestBody CreatePackageRequest request) {
         final var newEntity = Package.builder()
