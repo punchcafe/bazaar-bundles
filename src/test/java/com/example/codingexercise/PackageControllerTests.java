@@ -1,5 +1,7 @@
 package com.example.codingexercise;
 
+import com.example.codingexercise.api.schema.CreateProductPackageRequest;
+import com.example.codingexercise.api.schema.ProductPackageResource;
 import com.example.codingexercise.model.ProductPackage;
 import com.example.codingexercise.repository.PackageRepository;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PackageControllerTests {
 
+    private final static String TEST_PRODUCT_NAME = "Test Name";
+    private final static String TEST_PRODUCT_DESCRIPTION = "Test Description";
+    private final static List<String> TEST_PRODUCT_PRODUCT_LIST = List.of("prod1");
+
 	private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
 
@@ -27,34 +33,76 @@ class PackageControllerTests {
     }
 
     @Test
-    void createPackage() {
-		ResponseEntity<ProductPackage> created = restTemplate.postForEntity("/packages", new ProductPackage(null, "Test Name", "Test Desc", List.of("prod1")), ProductPackage.class);
-        assertEquals(HttpStatus.OK, created.getStatusCode(), "Unexpected status code");
-        ProductPackage createdBody = created.getBody();
-        assertNotNull(createdBody, "Unexpected body");
-        assertEquals("Test Name", createdBody.getName(), "Unexpected name");
-        assertEquals("Test Desc", createdBody.getDescription(), "Unexpected description");
-        assertEquals(List.of("prod1"), createdBody.getProductIds(), "Unexpected products");
+    void createPackage_returns200AndCreatedPackage() {
+        // Arrange
+        final var request = CreateProductPackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(TEST_PRODUCT_PRODUCT_LIST)
+                .build();
 
-        ProductPackage productPackage = packageRepository.get(createdBody.getId());
-        assertNotNull(productPackage, "Unexpected package");
-        assertEquals(createdBody.getId(), productPackage.getId(), "Unexpected id");
-        assertEquals(createdBody.getName(), productPackage.getName(), "Unexpected name");
-        assertEquals(createdBody.getDescription(), productPackage.getDescription(), "Unexpected description");
-        assertEquals(createdBody.getProductIds(), productPackage.getProductIds(), "Unexpected products");
+        // Act
+		ResponseEntity<ProductPackageResource> response = POST_productPackage(request);
+        ProductPackageResource responseBody = response.getBody();
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode(), "Unexpected status code");
+        assertNotNull(responseBody);
+        assertEquals(TEST_PRODUCT_NAME, responseBody.name());
+        assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
+        assertEquals(TEST_PRODUCT_PRODUCT_LIST, responseBody.productIds());
     }
 
     @Test
-    void getPackage() {
-        ProductPackage productPackage = packageRepository.create("Test Name 2", "Test Desc 2", List.of("prod2"));
-        ResponseEntity<ProductPackage> fetched = restTemplate.getForEntity("/packages/{id}", ProductPackage.class, productPackage.getId());
-        assertEquals(HttpStatus.OK, fetched.getStatusCode(), "Unexpected status code");
-        ProductPackage fetchedBody = fetched.getBody();
-        assertNotNull(fetchedBody, "Unexpected body");
-        assertEquals(productPackage.getId(), fetchedBody.getId(), "Unexpected id");
-        assertEquals(productPackage.getName(), fetchedBody.getName(), "Unexpected name");
-        assertEquals(productPackage.getDescription(), fetchedBody.getDescription(), "Unexpected description");
-        assertEquals(productPackage.getProductIds(), fetchedBody.getProductIds(), "Unexpected products");
+    void createPackage_andGetPackage_returns200AndCreatedPackage() {
+        // Arrange
+        final var request = CreateProductPackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(TEST_PRODUCT_PRODUCT_LIST)
+                .build();
+
+        // Act
+        ResponseEntity<ProductPackageResource> response = POST_productPackage(request);
+        ProductPackageResource createdBody = response.getBody();
+        final var createdId = createdBody.id();
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        final var getProductPackageResponse = GET_productPackage(createdId);
+        assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
+        assertEquals(createdBody, getProductPackageResponse.getBody());
+    }
+
+    @Test
+    void getPackage_Returns200AndEntityWhenPackageExists() {
+        // Arrange
+        final var existingPackage = provisionProductPackage("Test Name 2", "Test Desc 2", List.of("prod2"));
+
+        // Act
+        final var response = GET_productPackage(existingPackage.id());
+        final var responseBody = response.getBody();
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(responseBody);
+        assertEquals(existingPackage.id(), responseBody.id());
+        assertEquals(existingPackage.name(), responseBody.name());
+        assertEquals(existingPackage.description(), responseBody.description());
+        assertEquals(existingPackage.productIds(), responseBody.productIds());
+    }
+
+    private ResponseEntity<ProductPackageResource> GET_productPackage(final String id){
+        return restTemplate.getForEntity("/packages/{id}", ProductPackageResource.class, id);
+    }
+
+    private ResponseEntity<ProductPackageResource> POST_productPackage(final CreateProductPackageRequest request){
+        return restTemplate.postForEntity("/packages", request, ProductPackageResource.class);
+    }
+
+    private ProductPackageResource provisionProductPackage(final String name, final String description, final List<String> productIds) {
+        ProductPackage productPackage = packageRepository.create(name, description, productIds);
+        return ProductPackageResource.fromModel(productPackage);
     }
 
 }
