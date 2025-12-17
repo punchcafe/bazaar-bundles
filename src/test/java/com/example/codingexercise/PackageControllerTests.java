@@ -1,6 +1,7 @@
 package com.example.codingexercise;
 
 import com.example.codingexercise.api.schema.CreatePackageRequest;
+import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
 import com.example.codingexercise.repository.PackageRepository;
@@ -34,6 +35,7 @@ class PackageControllerTests {
 
     @Test
     void createPackage_returns200AndCreatedPackage() {
+        // TODO: change to 201
         // Arrange
         final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
@@ -88,9 +90,44 @@ class PackageControllerTests {
         assertEquals(existingPackage.description(), responseBody.description());
     }
 
-    private ResponseEntity<PackageResource> GET_productPackage(final long id){
-        return restTemplate.getForEntity("/packages/{id}", PackageResource.class, id);
+    @Test
+    void getPackage_Returns404AndErrorMessageWhenPackageDoesntExist() {
+        // Act
+        final var response = GET_productPackage(101202303, ErrorResponse.class);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(new ErrorResponse("package not found"), response.getBody());
     }
+
+    @Test
+    void getPackage_Returns400AndErrorMessageWhenInvalidID() {
+        // Act
+        final var response = GET_productPackage("invalid_value", ErrorResponse.class);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("invalid id: must be a number"), response.getBody());
+    }
+
+    // TODO: clean this up when ID is a string
+
+    private ResponseEntity<PackageResource> GET_productPackage(final String id){
+        return GET_productPackage(id, PackageResource.class);
+    }
+
+    private ResponseEntity<PackageResource> GET_productPackage(final long id){
+        return GET_productPackage(Long.toString(id));
+    }
+
+    private <T> ResponseEntity<T> GET_productPackage(final long id, Class<T> entityClass){
+        return GET_productPackage(Long.toString(id), entityClass);
+    }
+
+    private <T> ResponseEntity<T> GET_productPackage(final String id, Class<T> entityClass){
+        return restTemplate.getForEntity("/packages/{id}", entityClass, id);
+    }
+
 
     private ResponseEntity<PackageResource> POST_productPackage(final CreatePackageRequest request){
         return restTemplate.postForEntity("/packages", request, PackageResource.class);
