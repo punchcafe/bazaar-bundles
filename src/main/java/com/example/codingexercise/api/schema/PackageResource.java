@@ -6,7 +6,7 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record PackageResource(long id, String name, String description, List<String> productIds) {
+public record PackageResource(long id, String name, String description) {
     public static PackageResource fromModel(final Package model) {
         return PackageResource.builder()
                 .id(model.getId())
