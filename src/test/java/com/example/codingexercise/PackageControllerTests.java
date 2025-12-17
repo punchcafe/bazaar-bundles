@@ -1,8 +1,10 @@
 package com.example.codingexercise;
 
-import com.example.codingexercise.api.schema.CreateProductPackageRequest;
-import com.example.codingexercise.api.schema.ProductPackageResource;
+import com.example.codingexercise.api.schema.CreatePackageRequest;
+import com.example.codingexercise.api.schema.PackageResource;
+import com.example.codingexercise.model.Package;
 import com.example.codingexercise.model.ProductPackage;
+import com.example.codingexercise.repository.PackageRepository;
 import com.example.codingexercise.repository.ProductPackageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +26,10 @@ class PackageControllerTests {
     private final static List<String> TEST_PRODUCT_PRODUCT_LIST = List.of("prod1");
 
 	private final TestRestTemplate restTemplate;
-    private final ProductPackageRepository packageRepository;
+    private final PackageRepository packageRepository;
 
     @Autowired
-    PackageControllerTests(TestRestTemplate restTemplate, ProductPackageRepository packageRepository) {
+    PackageControllerTests(TestRestTemplate restTemplate, PackageRepository packageRepository) {
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
     }
@@ -35,14 +37,14 @@ class PackageControllerTests {
     @Test
     void createPackage_returns200AndCreatedPackage() {
         // Arrange
-        final var request = CreateProductPackageRequest.builder()
+        final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .build();
 
         // Act
-		ResponseEntity<ProductPackageResource> response = POST_productPackage(request);
-        ProductPackageResource responseBody = response.getBody();
+		ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource responseBody = response.getBody();
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode(), "Unexpected status code");
@@ -54,14 +56,14 @@ class PackageControllerTests {
     @Test
     void createPackage_andGetPackage_returns200AndCreatedPackage() {
         // Arrange
-        final var request = CreateProductPackageRequest.builder()
+        final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .build();
 
         // Act
-        ResponseEntity<ProductPackageResource> response = POST_productPackage(request);
-        ProductPackageResource createdBody = response.getBody();
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource createdBody = response.getBody();
         final var createdId = createdBody.id();
 
         // Assert
@@ -88,17 +90,21 @@ class PackageControllerTests {
         assertEquals(existingPackage.description(), responseBody.description());
     }
 
-    private ResponseEntity<ProductPackageResource> GET_productPackage(final String id){
-        return restTemplate.getForEntity("/packages/{id}", ProductPackageResource.class, id);
+    private ResponseEntity<PackageResource> GET_productPackage(final long id){
+        return restTemplate.getForEntity("/packages/{id}", PackageResource.class, id);
     }
 
-    private ResponseEntity<ProductPackageResource> POST_productPackage(final CreateProductPackageRequest request){
-        return restTemplate.postForEntity("/packages", request, ProductPackageResource.class);
+    private ResponseEntity<PackageResource> POST_productPackage(final CreatePackageRequest request){
+        return restTemplate.postForEntity("/packages", request, PackageResource.class);
     }
 
-    private ProductPackageResource provisionProductPackage(final String name, final String description) {
-        ProductPackage productPackage = packageRepository.create(name, description, List.of());
-        return ProductPackageResource.fromModel(productPackage);
+    private PackageResource provisionProductPackage(final String name, final String description) {
+        final var newPackage = Package.builder()
+                .name(name)
+                .description(description)
+                .build();
+        Package createdPackage = packageRepository.save(newPackage);
+        return PackageResource.fromModel(createdPackage);
     }
 
 }

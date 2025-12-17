@@ -5,5 +5,5 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record CreateProductPackageRequest(String name, String description, List<String> productIds) {
+public record CreatePackageRequest(String name, String description) {
 }
