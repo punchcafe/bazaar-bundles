@@ -38,7 +38,6 @@ class PackageControllerTests {
         final var request = CreateProductPackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(TEST_PRODUCT_PRODUCT_LIST)
                 .build();
 
         // Act
@@ -50,7 +49,6 @@ class PackageControllerTests {
         assertNotNull(responseBody);
         assertEquals(TEST_PRODUCT_NAME, responseBody.name());
         assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
-        assertEquals(TEST_PRODUCT_PRODUCT_LIST, responseBody.productIds());
     }
 
     @Test
@@ -59,7 +57,6 @@ class PackageControllerTests {
         final var request = CreateProductPackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(TEST_PRODUCT_PRODUCT_LIST)
                 .build();
 
         // Act
@@ -77,7 +74,7 @@ class PackageControllerTests {
     @Test
     void getPackage_Returns200AndEntityWhenPackageExists() {
         // Arrange
-        final var existingPackage = provisionProductPackage("Test Name 2", "Test Desc 2", List.of("prod2"));
+        final var existingPackage = provisionProductPackage("Test Name 2", "Test Desc 2");
 
         // Act
         final var response = GET_productPackage(existingPackage.id());
@@ -89,7 +86,6 @@ class PackageControllerTests {
         assertEquals(existingPackage.id(), responseBody.id());
         assertEquals(existingPackage.name(), responseBody.name());
         assertEquals(existingPackage.description(), responseBody.description());
-        assertEquals(existingPackage.productIds(), responseBody.productIds());
     }
 
     private ResponseEntity<ProductPackageResource> GET_productPackage(final String id){
@@ -100,8 +96,8 @@ class PackageControllerTests {
         return restTemplate.postForEntity("/packages", request, ProductPackageResource.class);
     }
 
-    private ProductPackageResource provisionProductPackage(final String name, final String description, final List<String> productIds) {
-        ProductPackage productPackage = packageRepository.create(name, description, productIds);
+    private ProductPackageResource provisionProductPackage(final String name, final String description) {
+        ProductPackage productPackage = packageRepository.create(name, description, List.of());
         return ProductPackageResource.fromModel(productPackage);
     }
 
