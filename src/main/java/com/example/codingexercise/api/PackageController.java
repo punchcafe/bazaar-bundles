@@ -4,7 +4,6 @@ import com.example.codingexercise.api.schema.CreatePackageRequest;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
 import com.example.codingexercise.repository.PackageRepository;
-import com.example.codingexercise.repository.ProductPackageRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
