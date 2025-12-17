@@ -1,0 +1,16 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd">
+
+    <changeSet author="Luca Fruzza" id="202512171243">
+        <comment>Create packages Tables</comment>
+        <createTable tableName="packages">
+            <column name="id" type="INTEGER" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="packages_pk"/>
+            </column>
+            <column name="name" type="VARCHAR(128)"/>
+            <column name="description" type="CLOB"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>
