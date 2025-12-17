@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Component
-public class PackageRepository {
+public class ProductPackageRepository {
 
     private final List<ProductPackage> productPackages = new ArrayList<>();
 

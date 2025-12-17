@@ -2,7 +2,7 @@ package com.example.codingexercise.api;
 
 import com.example.codingexercise.api.schema.CreateProductPackageRequest;
 import com.example.codingexercise.api.schema.ProductPackageResource;
-import com.example.codingexercise.repository.PackageRepository;
+import com.example.codingexercise.repository.ProductPackageRepository;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PackageController {
 
-    private final PackageRepository packageRepository;
+    private final ProductPackageRepository packageRepository;
 
-    public PackageController(PackageRepository packageRepository) {
+    public PackageController(ProductPackageRepository packageRepository) {
         this.packageRepository = packageRepository;
     }
 
