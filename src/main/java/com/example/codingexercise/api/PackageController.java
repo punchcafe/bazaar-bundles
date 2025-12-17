@@ -1,7 +1,7 @@
 package com.example.codingexercise.api;
 
 import com.example.codingexercise.api.errors.EntityNotFoundException;
-import com.example.codingexercise.api.schema.CreatePackageRequest;
+import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
@@ -33,7 +33,7 @@ public class PackageController {
 
     @ResponseStatus(code=HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
-    public PackageResource create(@RequestBody CreatePackageRequest request) {
+    public PackageResource create(@RequestBody ChangePackageRequest request) {
         final var newEntity = Package.builder()
                 .name(request.name())
                 .description(request.description())
@@ -81,6 +81,54 @@ public class PackageController {
                 .toList();
 
         return PackageResource.fromModel(pkg, products);
+    }
+
+    @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
+    public PackageResource update(@PathVariable String id, @RequestBody ChangePackageRequest request) {
+        final var existingPackage = Optional.of(id)
+                .map(Long::parseLong)
+                .flatMap(packageRepository::findById)
+                .orElseThrow(EntityNotFoundException::new);
+
+        // TODO: replace with JPA annotations and better joins
+        // TODO: extract to serivce
+
+        // Prepare statement
+
+        final var existingProducts = packageProductRepository.findAllById_PackageId(existingPackage.getId())
+                .stream()
+                .toList();
+
+        final var existingProduceIds = existingProducts.stream()
+                .map(PackageProduct::getId)
+                .map(PackageProductId::getProductId)
+                .toList();
+
+        final var updatedEntity = existingPackage.toBuilder()
+                .name(request.name())
+                .description(request.description())
+                .build();
+
+        final var deleteProducts = existingProducts.stream()
+                .filter(packageProduct -> !request.productIds().contains(packageProduct.getId().getProductId()))
+                .toList();
+
+        final var addProducts = request.productIds().stream()
+                .filter(productId -> !existingProduceIds.contains(productId))
+                .map(productId -> buildPackageProduct(productId, existingPackage.getId()))
+                .toList();
+
+        final var persistedEntity = this.packageRepository.save(updatedEntity);
+        this.packageProductRepository.deleteAll(deleteProducts);
+        this.packageProductRepository.saveAll(addProducts);
+
+        final var updatedProducts = packageProductRepository.findAllById_PackageId(existingPackage.getId())
+                .stream()
+                .map(PackageProduct::getId)
+                .map(PackageProductId::getProductId)
+                .toList();
+
+        return PackageResource.fromModel(persistedEntity, updatedProducts);
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)

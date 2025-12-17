@@ -1,6 +1,6 @@
 package com.example.codingexercise;
 
-import com.example.codingexercise.api.schema.CreatePackageRequest;
+import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -22,7 +24,9 @@ class PackageControllerTests {
 
     private final static String TEST_PRODUCT_NAME = "Test Name";
     private final static String TEST_PRODUCT_DESCRIPTION = "Test Description";
-    private final static List<String> TEST_PRODUCT_PRODUCT_LIST = List.of("prod1");
+
+    private final static String UPDATED_PRODUCT_NAME = "Updated Test Name";
+    private final static String UPDATED_PRODUCT_DESCRIPTION = "Updated Test Description";
 
 	private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
@@ -38,7 +42,7 @@ class PackageControllerTests {
     @Test
     void createPackage_returns201AndCreatedPackage() {
         // Arrange
-        final var request = CreatePackageRequest.builder()
+        final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of())
@@ -59,7 +63,7 @@ class PackageControllerTests {
     @Test
     void createPackage_returnsPersistedProductIdsInResponse() {
         // Arrange
-        final var request = CreatePackageRequest.builder()
+        final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of("a", "b", "c"))
@@ -77,7 +81,7 @@ class PackageControllerTests {
     @Test
     void createPackage_persistsProductIds() {
         // Arrange
-        final var request = CreatePackageRequest.builder()
+        final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of("a", "b", "c", "d"))
@@ -95,7 +99,7 @@ class PackageControllerTests {
     @Test
     void createPackageWithProductIds_andGetPackage_returnsCreatedProductIds() {
         // Arrange
-        final var request = CreatePackageRequest.builder()
+        final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of("hello", "world"))
@@ -115,7 +119,7 @@ class PackageControllerTests {
     @Test
     void createPackage_andGetPackage_returnsCreatedPackage() {
         // Arrange
-        final var request = CreatePackageRequest.builder()
+        final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of())
@@ -169,6 +173,156 @@ class PackageControllerTests {
         assertEquals(new ErrorResponse("invalid id: must be a number"), response.getBody());
     }
 
+    @Test
+    void updatePackage_returns200AndUpdatedPackage() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b"))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("c", "d"))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request);
+        final var updatedEntity = response.getBody();
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(UPDATED_PRODUCT_NAME, updatedEntity.name());
+        assertEquals(UPDATED_PRODUCT_DESCRIPTION, updatedEntity.description());
+        assertEquals(List.of("c", "d"), updatedEntity.productIds());
+    }
+
+
+    @Test
+    void updatePackage_canSetProductsToEmpty() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b"))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .productIds(List.of())
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request);
+        final var updatedEntity = response.getBody();
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(List.of(), updatedEntity.productIds());
+    }
+
+    @Test
+    void updatePackage_keepsAnyExistingProductIdsInRequest() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b"))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .productIds(List.of("b", "c"))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request);
+        final var updatedEntity = response.getBody();
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(List.of("b", "c"), updatedEntity.productIds());
+    }
+
+    @Test
+    void updatePackage_returns404ifPackageDoesntExist() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("c", "d"))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage("901901901", request, ErrorResponse.class);
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(new ErrorResponse("package not found"), response.getBody());
+    }
+
+    @Test
+    void updatePackage_returns400ifInvalidId() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("c", "d"))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage("notanumber", request, ErrorResponse.class);
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("invalid id: must be a number"), response.getBody());
+    }
+
+    @Test
+    void updatePackage_persistsChanges() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b"))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("c", "d"))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request);
+        final var updatedEntity = GET_productPackage(createdEntity.id()).getBody();
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(UPDATED_PRODUCT_NAME, updatedEntity.name());
+        assertEquals(UPDATED_PRODUCT_DESCRIPTION, updatedEntity.description());
+        assertEquals(List.of("c", "d"), updatedEntity.productIds());
+
+    }
+
     // TODO: clean this up when ID is a string
 
     private ResponseEntity<PackageResource> GET_productPackage(final String id){
@@ -188,7 +342,20 @@ class PackageControllerTests {
     }
 
 
-    private ResponseEntity<PackageResource> POST_productPackage(final CreatePackageRequest request){
+    private ResponseEntity<PackageResource> PUT_productPackage(final long id, final ChangePackageRequest request){
+        return PUT_productPackage(Long.toString(id), request);
+    }
+
+    private ResponseEntity<PackageResource> PUT_productPackage(final String id, final ChangePackageRequest request){
+        return PUT_productPackage(id, request, PackageResource.class);
+    }
+
+    private <T> ResponseEntity<T> PUT_productPackage(final String id, final ChangePackageRequest request, Class<T> responseClass){
+        final HttpEntity<ChangePackageRequest> httpRequest = new HttpEntity<>(request);
+        return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.PUT, httpRequest, responseClass);
+    }
+
+    private ResponseEntity<PackageResource> POST_productPackage(final ChangePackageRequest request){
         return restTemplate.postForEntity("/packages", request, PackageResource.class);
     }
 
