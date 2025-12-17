@@ -5,9 +5,9 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-public record ProductPackage(String id, String name, String description, List<String> productIds) {
-    public static ProductPackage fromModel(final com.example.codingexercise.model.ProductPackage model) {
-        return ProductPackage.builder()
+public record ProductPackageResource(String id, String name, String description, List<String> productIds) {
+    public static ProductPackageResource fromModel(final com.example.codingexercise.model.ProductPackage model) {
+        return ProductPackageResource.builder()
                 .id(model.getId())
                 .name(model.getName())
                 .description(model.getDescription())
