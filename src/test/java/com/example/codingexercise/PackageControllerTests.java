@@ -3,7 +3,7 @@ package com.example.codingexercise;
 import com.example.codingexercise.api.schema.CreateProductPackageRequest;
 import com.example.codingexercise.api.schema.ProductPackageResource;
 import com.example.codingexercise.model.ProductPackage;
-import com.example.codingexercise.repository.PackageRepository;
+import com.example.codingexercise.repository.ProductPackageRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,10 +24,10 @@ class PackageControllerTests {
     private final static List<String> TEST_PRODUCT_PRODUCT_LIST = List.of("prod1");
 
 	private final TestRestTemplate restTemplate;
-    private final PackageRepository packageRepository;
+    private final ProductPackageRepository packageRepository;
 
     @Autowired
-    PackageControllerTests(TestRestTemplate restTemplate, PackageRepository packageRepository) {
+    PackageControllerTests(TestRestTemplate restTemplate, ProductPackageRepository packageRepository) {
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
     }
