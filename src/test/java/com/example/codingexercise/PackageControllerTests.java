@@ -34,8 +34,7 @@ class PackageControllerTests {
     }
 
     @Test
-    void createPackage_returns200AndCreatedPackage() {
-        // TODO: change to 201
+    void createPackage_returns201AndCreatedPackage() {
         // Arrange
         final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
@@ -47,14 +46,14 @@ class PackageControllerTests {
         PackageResource responseBody = response.getBody();
 
         // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode(), "Unexpected status code");
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
         assertNotNull(responseBody);
         assertEquals(TEST_PRODUCT_NAME, responseBody.name());
         assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
     }
 
     @Test
-    void createPackage_andGetPackage_returns200AndCreatedPackage() {
+    void createPackage_andGetPackage_returnsCreatedPackage() {
         // Arrange
         final var request = CreatePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
@@ -65,10 +64,9 @@ class PackageControllerTests {
         ResponseEntity<PackageResource> response = POST_productPackage(request);
         PackageResource createdBody = response.getBody();
         final var createdId = createdBody.id();
+        final var getProductPackageResponse = GET_productPackage(createdId);
 
         // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        final var getProductPackageResponse = GET_productPackage(createdId);
         assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
         assertEquals(createdBody, getProductPackageResponse.getBody());
     }
