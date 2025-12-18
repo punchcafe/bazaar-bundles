@@ -4,6 +4,7 @@ import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
+import com.example.codingexercise.config.ApiConfiguration;
 import com.example.codingexercise.model.Package;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
@@ -38,14 +39,17 @@ class PackageControllerTests {
 	private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
     private final PackageProductRepository packagePackageRepository;
+    private final ApiConfiguration apiConfiguration;
 
     @Autowired
     PackageControllerTests(final TestRestTemplate restTemplate,
                            final PackageRepository packageRepository,
-                           final PackageProductRepository packagePackageRepository) {
+                           final PackageProductRepository packagePackageRepository,
+                           final ApiConfiguration apiConfiguration) {
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
         this.packagePackageRepository = packagePackageRepository;
+        this.apiConfiguration = apiConfiguration;
     }
 
     // TODO: add validations for invalid and null parameters
@@ -384,12 +388,6 @@ class PackageControllerTests {
         assertEquals(new ErrorResponse("package not found"), deleteResponse.getBody());
     }
 
-    // TODO: add test cases for
-    // Max page size
-    // default pagination
-    // empty case
-    // Invalid parameters (negative, 0)
-
     record ListTestCase(int pageSize, int pageNumber, List<Integer> expectedEntitySeeds){};
 
     @Test
@@ -422,6 +420,48 @@ class PackageControllerTests {
             assertEquals(paginationCase.pageSize, response.getBody().pageSize());
             assertEquals(expectedNames, actualNames);
         }
+    }
+
+    @Test
+    void listPackages_returns400OnInvalidQueryParams() {
+
+        // Act
+
+        final var negativeSizeResponse = GET_productPackages(-1, 1, ErrorResponse.class);
+        final var negativeNumberResponse = GET_productPackages(1, -1, ErrorResponse.class);
+        final var zeroPageSizeResponse = GET_productPackages(0, -1, ErrorResponse.class);
+        final var invalidPageSizeResponse =  restTemplate.getForEntity(
+                "/packages?page_size={pageSize}&page_number={pageNumber}",
+                ErrorResponse.class,
+                "hello",
+                1);
+        final var invalidPageNumberResponse =  restTemplate.getForEntity(
+                "/packages?page_size={pageSize}&page_number={pageNumber}",
+                ErrorResponse.class,
+                1,
+                "hello");
+
+        // Assert
+
+        assertEquals(HttpStatus.BAD_REQUEST, negativeSizeResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid query pagination parameters"), negativeSizeResponse.getBody());
+
+        assertEquals(HttpStatus.BAD_REQUEST, negativeNumberResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid query pagination parameters"), negativeNumberResponse.getBody());
+
+        assertEquals(HttpStatus.BAD_REQUEST, zeroPageSizeResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid query pagination parameters"), zeroPageSizeResponse.getBody());
+
+        assertEquals(HttpStatus.BAD_REQUEST, invalidPageSizeResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid query pagination parameters"), invalidPageSizeResponse.getBody());
+
+        assertEquals(HttpStatus.BAD_REQUEST, invalidPageNumberResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid query pagination parameters"), invalidPageNumberResponse.getBody());
+    }
+
+    void listPackages_scalesPageSizeDownIfBiggerThanMax() {
+        final var result = GET_productPackages(this.apiConfiguration.getMaxPageSize() + 1, 1);
+        assertEquals(result.getBody().pageSize(), this.apiConfiguration.getMaxPageSize());
     }
 
     @Test
@@ -503,9 +543,13 @@ class PackageControllerTests {
 
 
     private ResponseEntity<ListPackageResponse> GET_productPackages(final int pageSize, final int pageNumber){
+        return GET_productPackages(pageSize, pageNumber, ListPackageResponse.class);
+    }
+
+    private <T> ResponseEntity<T> GET_productPackages(final int pageSize, final int pageNumber, Class<T> expectedResponse){
         return restTemplate.getForEntity(
                 "/packages?page_size={pageSize}&page_number={pageNumber}",
-                ListPackageResponse.class,
+                expectedResponse,
                 pageSize,
                 pageNumber);
     }
