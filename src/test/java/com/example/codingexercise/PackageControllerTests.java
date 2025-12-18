@@ -16,8 +16,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PackageControllerTests {
@@ -323,6 +322,53 @@ class PackageControllerTests {
 
     }
 
+
+    @Test
+    void deletePackage_returns200AndDeletesPackageIfItExists() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of("a", "b"))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        // Act
+        final var deleteResponse = DELETE_productPackage(createdEntity.id());
+        final var getResponse = GET_productPackage(createdEntity.id());
+
+
+        // Assert
+        assertEquals(HttpStatus.NO_CONTENT, deleteResponse.getStatusCode());
+        assertNull(deleteResponse.getBody());
+        assertEquals(HttpStatus.NOT_FOUND, getResponse.getStatusCode());
+    }
+
+
+    @Test
+    void deletePackage_returns400IfInvalidID() {
+        // Act
+        final var deleteResponse = DELETE_productPackage("invalid_id", ErrorResponse.class);
+
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, deleteResponse.getStatusCode());
+        assertEquals(new ErrorResponse("invalid id: must be a number"), deleteResponse.getBody());
+    }
+
+    @Test
+    void deletePackage_returns404IfNotFound() {
+        // Act
+        final var deleteResponse = DELETE_productPackage("101202303404", ErrorResponse.class);
+
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, deleteResponse.getStatusCode());
+        assertEquals(new ErrorResponse("package not found"), deleteResponse.getBody());
+    }
+
     // TODO: clean this up when ID is a string
 
     private ResponseEntity<PackageResource> GET_productPackage(final String id){
@@ -357,6 +403,14 @@ class PackageControllerTests {
 
     private ResponseEntity<PackageResource> POST_productPackage(final ChangePackageRequest request){
         return restTemplate.postForEntity("/packages", request, PackageResource.class);
+    }
+
+    private ResponseEntity<Void> DELETE_productPackage(final long id){
+        return DELETE_productPackage(Long.toString(id), Void.class);
+    }
+
+    private <T> ResponseEntity<T> DELETE_productPackage(final String id,  Class<T> responseClass){
+        return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.DELETE, HttpEntity.EMPTY, responseClass);
     }
 
     private PackageResource provisionProductPackage(final String name, final String description) {
