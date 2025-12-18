@@ -27,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
@@ -109,7 +110,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b", "c"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2, SAMPLE_PRODUCT_ID_3))
                 .build();
 
         // Act
@@ -117,8 +118,9 @@ class PackageControllerTests {
         PackageResource responseBody = response.getBody();
 
         // Assert
-        assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
-        assertEquals(List.of("a", "b", "c"), responseBody.productIds());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2, SAMPLE_PRODUCT_ID_3))
+                .containsExactlyInAnyOrderElementsOf(responseBody.productIds());
     }
 
     @Test
@@ -127,7 +129,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b", "c", "d"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .build();
 
         // Act
@@ -135,9 +137,11 @@ class PackageControllerTests {
         PackageResource responseBody = response.getBody();
 
         // Assert
-        assertEquals(HttpStatus.CREATED, response.getStatusCode(), "Unexpected status code");
-        assertEquals(List.of("a", "b", "c", "d"), responseBody.productIds());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .containsExactlyInAnyOrderElementsOf(responseBody.productIds());
     }
+    // TODO: validate against duplicate productIds
 
     @Test
     void createPackageWithProductIds_andGetPackage_returnsCreatedProductIds() {
@@ -145,7 +149,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("hello", "world"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_4, SAMPLE_PRODUCT_ID_1))
                 .build();
 
         // Act
@@ -156,7 +160,8 @@ class PackageControllerTests {
 
         // Assert
         assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
-        assertEquals(List.of("hello", "world"), getProductPackageResponse.getBody().productIds());
+        assertThat(List.of(SAMPLE_PRODUCT_ID_4, SAMPLE_PRODUCT_ID_1))
+                .containsExactlyInAnyOrderElementsOf(getProductPackageResponse.getBody().productIds());
     }
 
     @Test
@@ -244,7 +249,7 @@ class PackageControllerTests {
         final var createRequest = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_4, SAMPLE_PRODUCT_ID_1))
                 .build();
 
         ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
@@ -253,7 +258,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(UPDATED_PRODUCT_NAME)
                 .description(UPDATED_PRODUCT_DESCRIPTION)
-                .productIds(List.of("c", "d"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3, SAMPLE_PRODUCT_ID_2))
                 .build();
 
         // Act
@@ -266,7 +271,8 @@ class PackageControllerTests {
         assertNotNull(response.getBody());
         assertEquals(UPDATED_PRODUCT_NAME, updatedEntity.name());
         assertEquals(UPDATED_PRODUCT_DESCRIPTION, updatedEntity.description());
-        assertEquals(List.of("c", "d"), updatedEntity.productIds());
+        assertThat(List.of(SAMPLE_PRODUCT_ID_3, SAMPLE_PRODUCT_ID_2))
+                .containsExactlyInAnyOrderElementsOf(updatedEntity.productIds());
     }
 
 
@@ -276,7 +282,7 @@ class PackageControllerTests {
         final var createRequest = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3))
                 .build();
 
         ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
@@ -303,14 +309,14 @@ class PackageControllerTests {
         final var createRequest = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_3))
                 .build();
 
         ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
         PackageResource createdEntity = creationResponse.getBody();
 
         final var request = ChangePackageRequest.builder()
-                .productIds(List.of("b", "c"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .build();
 
         // Act
@@ -321,7 +327,8 @@ class PackageControllerTests {
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals(List.of("b", "c"), updatedEntity.productIds());
+        assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .containsExactlyInAnyOrderElementsOf(updatedEntity.productIds());
     }
 
     @Test
@@ -359,7 +366,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(UPDATED_PRODUCT_NAME)
                 .description(UPDATED_PRODUCT_DESCRIPTION)
-                .productIds(List.of("c", "d"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_2))
                 .build();
 
         // Act
@@ -375,7 +382,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(UPDATED_PRODUCT_NAME)
                 .description(UPDATED_PRODUCT_DESCRIPTION)
-                .productIds(List.of("c", "d"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1))
                 .build();
 
         // Act
@@ -391,7 +398,7 @@ class PackageControllerTests {
         final var createRequest = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_4))
                 .build();
 
         ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
@@ -400,7 +407,7 @@ class PackageControllerTests {
         final var request = ChangePackageRequest.builder()
                 .name(UPDATED_PRODUCT_NAME)
                 .description(UPDATED_PRODUCT_DESCRIPTION)
-                .productIds(List.of("c", "d"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .build();
 
         // Act
@@ -413,8 +420,8 @@ class PackageControllerTests {
         assertNotNull(response.getBody());
         assertEquals(UPDATED_PRODUCT_NAME, updatedEntity.name());
         assertEquals(UPDATED_PRODUCT_DESCRIPTION, updatedEntity.description());
-        assertEquals(List.of("c", "d"), updatedEntity.productIds());
-
+        assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .containsAnyElementsOf(updatedEntity.productIds());
     }
 
 
@@ -424,7 +431,7 @@ class PackageControllerTests {
         final var createRequest = ChangePackageRequest.builder()
                 .name(TEST_PRODUCT_NAME)
                 .description(TEST_PRODUCT_DESCRIPTION)
-                .productIds(List.of("a", "b"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1))
                 .build();
 
         ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
@@ -584,10 +591,7 @@ class PackageControllerTests {
             assertEquals(expected.id(), actual.id());
             assertEquals(expected.name(), actual.name());
             assertEquals(expected.description(), actual.description());
-            assertEquals(
-                    expected.productIds().stream().sorted().toList(),
-                    actual.productIds().stream().sorted().toList()
-            );
+            assertThat(expected.productIds()).containsExactlyInAnyOrderElementsOf(actual.productIds());
         }
         // May need to update this in case productID ordering (not-guaranteed) creates equality issues.
     }
@@ -659,8 +663,16 @@ class PackageControllerTests {
         return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.PUT, httpRequest, responseClass);
     }
 
+    private <T> ResponseEntity<T> PUT_productPackage(final long id, final ChangePackageRequest request, Class<T> responseClass){
+        return PUT_productPackage(Long.toString(id), request, responseClass);
+    }
+
     private ResponseEntity<PackageResource> POST_productPackage(final ChangePackageRequest request){
-        return restTemplate.postForEntity("/packages", request, PackageResource.class);
+        return POST_productPackage(request, PackageResource.class);
+    }
+
+    private <T> ResponseEntity<T> POST_productPackage(final ChangePackageRequest request, Class<T> responseClass){
+        return restTemplate.postForEntity("/packages", request, responseClass);
     }
 
     private ResponseEntity<Void> DELETE_productPackage(final long id){
