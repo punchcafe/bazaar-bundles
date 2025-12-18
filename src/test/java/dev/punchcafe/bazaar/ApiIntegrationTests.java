@@ -5,6 +5,8 @@ import dev.punchcafe.bazaar.api.schema.ErrorResponse;
 import dev.punchcafe.bazaar.api.schema.ListPackageResponse;
 import dev.punchcafe.bazaar.api.schema.PackageResource;
 import dev.punchcafe.bazaar.config.ApiConfiguration;
+import dev.punchcafe.bazaar.currency.CurrencyApiResponse;
+import dev.punchcafe.bazaar.currency.CurrencyRatesCache;
 import dev.punchcafe.bazaar.packages.Package;
 import dev.punchcafe.bazaar.packages.PackageService;
 import dev.punchcafe.bazaar.packages.repository.PackageProductRepository;
@@ -58,7 +60,15 @@ class ApiIntegrationTests {
             SAMPLE_PRODUCT_ID_4, SAMPLE_PRODUCT_4
     );
 
+    private final static Map<String, Double> SAMPLE_CONVERSION_RATES = Map.of(
+    "AUD",	1.5133,
+    "BGN",	1.6689,
+    "GBP", 0.74631,
+    "JPY",	155.77
+    );
+
     @MockBean private final ProductsCache productsCache;
+    @MockBean private final CurrencyRatesCache currencyRatesCache;
     private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
     private final PackageProductRepository packagePackageRepository;
@@ -68,11 +78,13 @@ class ApiIntegrationTests {
     @Autowired
     ApiIntegrationTests(
             final ProductsCache productsCache,
+            final CurrencyRatesCache currencyRatesCache,
             final TestRestTemplate restTemplate,
             final PackageRepository packageRepository,
             final PackageProductRepository packagePackageRepository,
             final PackageService packageService,
             final ApiConfiguration apiConfiguration) {
+        this.currencyRatesCache = currencyRatesCache;
         this.productsCache = productsCache;
         this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
@@ -81,8 +93,16 @@ class ApiIntegrationTests {
         this.apiConfiguration = apiConfiguration;
     }
 
+    @BeforeEach
+    public void clearDatabase() {
+        this.packagePackageRepository.deleteAll();
+        this.packageRepository.deleteAll();;
+        when(productsCache.getCache()).thenReturn(SAMPLE_PRODUCT_CACHE);
+        when(currencyRatesCache.fetchRates()).thenReturn(
+                new CurrencyApiResponse("USD", "2025-12-18", SAMPLE_CONVERSION_RATES)
+        );
+    }
     // TODO: add validations for invalid and null parameters
-
     @Test
     void createPackage_returns201AndCreatedPackage() {
         // Arrange
@@ -237,6 +257,88 @@ class ApiIntegrationTests {
         assertEquals(existingPackage.id(), responseBody.id());
         assertEquals(existingPackage.name(), responseBody.name());
         assertEquals(existingPackage.description(), responseBody.description());
+    }
+
+    record CurrencyTestCase<T>(ResponseEntity<T> response, String expectedCurrency, double expectedCost){};
+
+    @Test
+    void getPackage_CanReturnDifferentCurrencies() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .build();
+
+        final var creationResponse = POST_productPackage(request);
+        Assumptions.assumeTrue(HttpStatus.CREATED == creationResponse.getStatusCode());
+        final var createdEntity = creationResponse.getBody();
+
+        // Act
+
+        final List<CurrencyTestCase<PackageResource>> cases = List.of(
+                // Check default response
+                new CurrencyTestCase<>(GET_productPackage(createdEntity.id()), "USD", 2148.0),
+                // Explicitly say USD
+                new CurrencyTestCase<>(GET_productPackageWithCurrency(createdEntity.id(), "USD"), "USD", 2148.0),
+                // GBP
+                new CurrencyTestCase<>(GET_productPackageWithCurrency(createdEntity.id(), "GBP"), "GBP", 1603.0738525390625),
+                // GBP with mixed cases
+                new CurrencyTestCase<>(GET_productPackageWithCurrency(createdEntity.id(), "gBp"), "GBP", 1603.0738525390625),
+                // USD with mixed cases
+                new CurrencyTestCase<>(GET_productPackageWithCurrency(createdEntity.id(), "UsD"), "USD", 2148.0),
+                // Unknown currency response
+                // TODO: consider if its better to break here?
+                new CurrencyTestCase<>(GET_productPackageWithCurrency(createdEntity.id(), "gp"), "USD", 2148.0)
+        );
+
+        for(var currencyCase : cases){
+            // Assert
+            assertEquals(HttpStatus.OK, currencyCase.response.getStatusCode());
+            assertEquals(currencyCase.expectedCost, currencyCase.response.getBody().totalPrice());
+            assertEquals(currencyCase.expectedCurrency, currencyCase.response.getBody().currency());
+        }
+    }
+
+
+    @Test
+    void listPackages_CanReturnDifferentCurrencies() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .build();
+
+        final var creationResponse = POST_productPackage(request);
+        Assumptions.assumeTrue(HttpStatus.CREATED == creationResponse.getStatusCode());
+        final var createdEntity = creationResponse.getBody();
+
+        // Act
+
+        final List<CurrencyTestCase<ListPackageResponse>> cases = List.of(
+                // Check default response
+                new CurrencyTestCase<>(GET_productPackages(1, 0), "USD", 2148.0),
+                // Explicitly say USD
+                new CurrencyTestCase<>(GET_productPackagesFirstPageWithCurrency("USD"), "USD", 2148.0),
+                // GBP
+                new CurrencyTestCase<>(GET_productPackagesFirstPageWithCurrency("GBP"), "GBP", 1603.0738525390625),
+                // GBP with mixed cases
+                new CurrencyTestCase<>(GET_productPackagesFirstPageWithCurrency("gBp"), "GBP", 1603.0738525390625),
+                // USD with mixed cases
+                new CurrencyTestCase<>(GET_productPackagesFirstPageWithCurrency("UsD"), "USD", 2148.0),
+                // Unknown currency response
+                // TODO: consider if its better to break here?
+                new CurrencyTestCase<>(GET_productPackagesFirstPageWithCurrency("gp"), "USD", 2148.0)
+        );
+
+        for(var currencyCase : cases){
+            // Assert
+            final var existingPackage = currencyCase.response.getBody().packages().get(0);
+            assertEquals(HttpStatus.OK, currencyCase.response.getStatusCode());
+            assertEquals(currencyCase.expectedCost, existingPackage.totalPrice());
+            assertEquals(currencyCase.expectedCurrency, existingPackage.currency());
+        }
     }
 
     @Test
@@ -652,14 +754,11 @@ class ApiIntegrationTests {
         return String.format("list_test_item_%d", index);
     }
 
-    @BeforeEach
-    public void clearDatabase() {
-        this.packagePackageRepository.deleteAll();
-        this.packageRepository.deleteAll();;
-        when(productsCache.getCache()).thenReturn(SAMPLE_PRODUCT_CACHE);
-    }
-
     // TODO: clean this up when ID is a string
+
+    private ResponseEntity<PackageResource> GET_productPackageWithCurrency(final long id, final String currency){
+        return restTemplate.getForEntity("/packages/{id}?currency={cur}", PackageResource.class, id, currency);
+    }
 
     private ResponseEntity<PackageResource> GET_productPackage(final String id){
         return GET_productPackage(id, PackageResource.class);
@@ -677,6 +776,10 @@ class ApiIntegrationTests {
         return restTemplate.getForEntity("/packages/{id}", entityClass, id);
     }
 
+    private ResponseEntity<ListPackageResponse> GET_productPackagesFirstPageWithCurrency(final String currency){
+        return restTemplate.getForEntity(
+                "/packages?page_size=1&page_number=0&currency={currency}", ListPackageResponse.class, currency);
+    }
 
     private ResponseEntity<ListPackageResponse> GET_productPackages(final int pageSize, final int pageNumber){
         return GET_productPackages(pageSize, pageNumber, ListPackageResponse.class);
