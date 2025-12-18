@@ -9,7 +9,7 @@ Alternatively for running manually you will need Java 17+, and a running instanc
 
 To launch the app:
 ```bash
-$ > ./mvn spring-boot:run
+$ > ./mvnw spring-boot:run
 ```
 
 The app will, by default, use the credentials configured for the devcontainer when connecting to MySQL. If you need to override this, use environment variables when starting the app:
