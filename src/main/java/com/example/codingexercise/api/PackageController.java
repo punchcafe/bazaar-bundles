@@ -1,5 +1,6 @@
 package com.example.codingexercise.api;
 
+import com.example.codingexercise.api.errors.UnknownProductId;
 import com.example.codingexercise.packages.EntityNotFoundException;
 import com.example.codingexercise.api.errors.InvalidPaginationParameters;
 import com.example.codingexercise.api.schema.ChangePackageRequest;
@@ -42,6 +43,7 @@ public class PackageController {
     @ResponseStatus(code=HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
     public PackageResource create(@RequestBody ChangePackageRequest request) {
+        validateProductIds(request);
         final var createdPackage = packageService.create(request.name(), request.description(), request.productIds());
         return convertModelToApiResource(createdPackage);
     }
@@ -63,6 +65,7 @@ public class PackageController {
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
     public PackageResource update(@PathVariable String id, @RequestBody ChangePackageRequest request) {
         final var parsedId = Long.parseLong(id);
+        validateProductIds(request);
         final var updatedPackage = packageService.update(
                 parsedId,
                 request.name(),
@@ -114,12 +117,27 @@ public class PackageController {
         }
     }
 
+    private void validateProductIds(final ChangePackageRequest request) {
+        final var anyInvalid = request.productIds()
+                .stream()
+                .map(this.productService::lookup)
+                .anyMatch(Optional::isEmpty);
+        if(anyInvalid) throw new UnknownProductId();
+    }
+
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseBody
     private ErrorResponse handleNotFound(final HttpServletRequest req, final Exception ex){
         return new ErrorResponse("package not found");
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UnknownProductId.class)
+    @ResponseBody
+    private ErrorResponse handleUnknownProductId(final HttpServletRequest req, final Exception ex){
+        return new ErrorResponse("unknown product ID");
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)

@@ -12,9 +12,9 @@ import com.example.codingexercise.packages.repository.PackageRepository;
 import com.example.codingexercise.products.Product;
 import com.example.codingexercise.products.ProductsCache;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Assumptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -59,7 +59,7 @@ class PackageControllerTests {
     );
 
     @MockBean private final ProductsCache productsCache;
-	private final TestRestTemplate restTemplate;
+    private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
     private final PackageProductRepository packagePackageRepository;
     private final ApiConfiguration apiConfiguration;
@@ -67,14 +67,14 @@ class PackageControllerTests {
 
     @Autowired
     PackageControllerTests(
-                            final ProductsCache productsCache,
-                            final TestRestTemplate restTemplate,
-                           final PackageRepository packageRepository,
-                           final PackageProductRepository packagePackageRepository,
-                           final PackageService packageService,
-                           final ApiConfiguration apiConfiguration) {
+            final ProductsCache productsCache,
+            final TestRestTemplate restTemplate,
+            final PackageRepository packageRepository,
+            final PackageProductRepository packagePackageRepository,
+            final PackageService packageService,
+            final ApiConfiguration apiConfiguration) {
         this.productsCache = productsCache;
-		this.restTemplate = restTemplate;
+        this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
         this.packagePackageRepository = packagePackageRepository;
         this.packageService = packageService;
@@ -93,7 +93,7 @@ class PackageControllerTests {
                 .build();
 
         // Act
-		ResponseEntity<PackageResource> response = POST_productPackage(request);
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
         PackageResource responseBody = response.getBody();
 
         // Assert
@@ -102,6 +102,22 @@ class PackageControllerTests {
         assertEquals(TEST_PRODUCT_NAME, responseBody.name());
         assertEquals(List.of(), responseBody.productIds());
         assertEquals(TEST_PRODUCT_DESCRIPTION, responseBody.description());
+    }
+
+    @Test
+    void createPackage_returns400IfProductIDNotRegistered() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("unknown_id", SAMPLE_PRODUCT_ID_1))
+                .build();
+
+        // Act
+        final var response = POST_productPackage(request, ErrorResponse.class);
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("unknown product ID"), response.getBody());
     }
 
     @Test
@@ -390,6 +406,31 @@ class PackageControllerTests {
         // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(new ErrorResponse("invalid id: must be a number"), response.getBody());
+    }
+
+    @Test
+    void updatePackage_returns400IfProductIDNotRegistered() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of("unknown_id", SAMPLE_PRODUCT_ID_1))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request, ErrorResponse.class);
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("unknown product ID"), response.getBody());
     }
 
     @Test
