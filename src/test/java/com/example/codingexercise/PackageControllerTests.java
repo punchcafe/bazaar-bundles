@@ -5,7 +5,9 @@ import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.config.ApiConfiguration;
-import com.example.codingexercise.model.Package;
+import com.example.codingexercise.model.PackageOrm;
+import com.example.codingexercise.packages.Package;
+import com.example.codingexercise.packages.PackageService;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -21,9 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.function.Function;
 
-import static com.fasterxml.jackson.databind.type.LogicalType.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
@@ -40,15 +40,18 @@ class PackageControllerTests {
     private final PackageRepository packageRepository;
     private final PackageProductRepository packagePackageRepository;
     private final ApiConfiguration apiConfiguration;
+    private final PackageService packageService;
 
     @Autowired
     PackageControllerTests(final TestRestTemplate restTemplate,
                            final PackageRepository packageRepository,
                            final PackageProductRepository packagePackageRepository,
+                           final PackageService packageService,
                            final ApiConfiguration apiConfiguration) {
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
         this.packagePackageRepository = packagePackageRepository;
+        this.packageService = packageService;
         this.apiConfiguration = apiConfiguration;
     }
 
@@ -581,12 +584,12 @@ class PackageControllerTests {
     }
 
     private PackageResource provisionProductPackage(final String name, final String description) {
-        final var newPackage = Package.builder()
+        final var newPackage = PackageOrm.builder()
                 .name(name)
                 .description(description)
                 .build();
-        Package createdPackage = packageRepository.save(newPackage);
-        return PackageResource.fromModel(createdPackage, List.of());
+        final Package created = packageService.create(name, description, List.of());
+        return PackageResource.fromModel(created);
     }
 
 }

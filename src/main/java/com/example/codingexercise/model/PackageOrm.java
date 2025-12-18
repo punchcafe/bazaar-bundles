@@ -6,15 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
 @Table(name="packages")
 @Data
-public class Package {
+public class PackageOrm {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
