@@ -1,6 +1,7 @@
 package dev.punchcafe.bazaar.api;
 
 import dev.punchcafe.bazaar.api.errors.UnknownProductId;
+import dev.punchcafe.bazaar.currency.CurrencyService;
 import dev.punchcafe.bazaar.packages.EntityNotFoundException;
 import dev.punchcafe.bazaar.api.errors.InvalidPaginationParameters;
 import dev.punchcafe.bazaar.api.schema.ChangePackageRequest;
@@ -20,23 +21,27 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
+import static dev.punchcafe.bazaar.currency.CurrencyService.USD_CURRENCY_LABEL;
+
 
 @Slf4j
 @RestController
 public class PackageController {
-
     private final ApiConfiguration apiConfiguration;
     private final PackageService packageService;
     private final ProductService productService;
+    private final CurrencyService currencyService;
 
     public PackageController(
             final ApiConfiguration apiConfiguration,
             final PackageService packageService,
-            final ProductService productService
+            final ProductService productService,
+            final CurrencyService currencyService
             ) {
         this.apiConfiguration = apiConfiguration;
         this.packageService = packageService;
         this.productService = productService;
+        this.currencyService = currencyService;
     }
 
     @ResponseStatus(code=HttpStatus.CREATED)
@@ -44,15 +49,18 @@ public class PackageController {
     public PackageResource create(@RequestBody ChangePackageRequest request) {
         validateProductIds(request);
         final var createdPackage = packageService.create(request.name(), request.description(), request.productIds());
-        return convertModelToApiResource(createdPackage);
+        return convertModelToApiResource(createdPackage, USD_CURRENCY_LABEL);
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
-    public PackageResource get(@PathVariable String id) {
+    public PackageResource get(
+            @PathVariable String id,
+            @RequestParam(value = "currency", defaultValue = USD_CURRENCY_LABEL) final String currency
+    ) {
          return Optional.of(id)
                 .map(Long::parseLong)
                 .flatMap(packageService::get)
-                 .map(this::convertModelToApiResource)
+                 .map(existingPackage -> this.convertModelToApiResource(existingPackage, currency) )
                 .orElseThrow(EntityNotFoundException::new);
     }
 
@@ -66,7 +74,7 @@ public class PackageController {
                 request.description(),
                 request.productIds()
         );
-        return convertModelToApiResource(updatedPackage);
+        return convertModelToApiResource(updatedPackage, USD_CURRENCY_LABEL);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -80,7 +88,8 @@ public class PackageController {
     @RequestMapping(method = RequestMethod.GET, value = "/packages")
     public ListPackageResponse list(
             @RequestParam(value = "page_size", defaultValue = "10") String pageSizeString,
-            @RequestParam(value = "page_number", defaultValue = "0") String pageNumberString
+            @RequestParam(value = "page_number", defaultValue = "0") String pageNumberString,
+            @RequestParam(value = "currency", defaultValue = USD_CURRENCY_LABEL) String currency
     ) {
         final var pageSize = Integer.min(
                 validatePaginationParamString(pageSizeString),
@@ -93,7 +102,7 @@ public class PackageController {
         }
 
         final var resultEntries = packageService.pagenatedPackages(pageNumber, pageSize).stream()
-                .map(this::convertModelToApiResource)
+                .map(pkg -> this.convertModelToApiResource(pkg, currency))
                 .toList();
 
         return ListPackageResponse.builder()
@@ -150,8 +159,8 @@ public class PackageController {
         return new ErrorResponse("invalid query pagination parameters");
     }
 
-    private PackageResource convertModelToApiResource(final Package model) {
-        final var totalPrice = model.productIds().stream()
+    private PackageResource convertModelToApiResource(final Package model, final String currency) {
+        final var totalPriceUsd = model.productIds().stream()
                 .map(productId -> {
                     // TODO: confirm business requirements for this case.
                     final var productCost = this.productService.lookup(productId).map(Product::usdPrice);
@@ -163,12 +172,27 @@ public class PackageController {
                 .reduce(Integer::sum)
                 .orElse(0);
 
-        return PackageResource.builder()
+
+        final var builder = PackageResource.builder()
                 .id(model.id())
                 .name(model.name())
                 .productIds(model.productIds())
-                .description(model.description())
-                .totalPrice(totalPrice)
-                .build();
+                .description(model.description());
+
+        return addPrice(builder, currency, totalPriceUsd).build();
+    }
+
+    private PackageResource.PackageResourceBuilder addPrice(
+            final PackageResource.PackageResourceBuilder builder,
+            final String currency,
+            final double usd) {
+        final var convertedAmount = this.currencyService.convertUSDTo(usd, currency);
+        if(convertedAmount.isPresent()) {
+            // TODO: clean up repeats of upper case
+            builder.totalPrice((float) (double) convertedAmount.get()).currency(currency.toUpperCase());
+            return builder;
+        } else {
+            return builder.totalPrice((float) usd).currency(USD_CURRENCY_LABEL);
+        }
     }
 }
