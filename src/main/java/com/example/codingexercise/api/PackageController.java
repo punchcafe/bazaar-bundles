@@ -10,13 +10,16 @@ import com.example.codingexercise.model.PackageProductId;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 public class PackageController {
 
@@ -52,18 +55,6 @@ public class PackageController {
 
         return PackageResource.fromModel(createdPackage, savedProducts);
     }
-
-
-    private static PackageProduct buildPackageProduct(final String productId, final long packageId) {
-        return PackageProduct.builder()
-                .id(
-                        PackageProductId.builder()
-                                .packageId(packageId)
-                                .productId(productId)
-                                .build())
-                .build();
-    }
-
 
     @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
     public PackageResource get(@PathVariable String id) {
@@ -131,6 +122,30 @@ public class PackageController {
         return PackageResource.fromModel(persistedEntity, updatedProducts);
     }
 
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @RequestMapping(method = RequestMethod.DELETE, value = "/packages/{id}")
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        // TODO:make transactional.
+        final var existingPackage = lookup(id);
+        final var packageProducts = lookupProducts(existingPackage.getId());
+        this.packageProductRepository.deleteAll(packageProducts);
+        this.packageRepository.delete(existingPackage);
+        return ResponseEntity.noContent().build();
+    }
+
+    private Package lookup(final String id){
+        return Optional.of(id)
+                .map(Long::parseLong)
+                .flatMap(packageRepository::findById)
+                .orElseThrow(EntityNotFoundException::new);
+    }
+
+    private List<PackageProduct> lookupProducts(final long id){
+        return packageProductRepository.findAllById_PackageId(id)
+                .stream()
+                .toList();
+    }
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseBody
@@ -145,5 +160,15 @@ public class PackageController {
         // Consider removing this before production and keeping it all strings at the
         // API level (so this would become 404).
         return new ErrorResponse("invalid id: must be a number");
+    }
+
+    private static PackageProduct buildPackageProduct(final String productId, final long packageId) {
+        return PackageProduct.builder()
+                .id(
+                        PackageProductId.builder()
+                                .packageId(packageId)
+                                .productId(productId)
+                                .build())
+                .build();
     }
 }
