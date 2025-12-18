@@ -1,4 +1,4 @@
-package com.example.codingexercise.api.errors;
+package com.example.codingexercise.packages;
 
 public class EntityNotFoundException extends RuntimeException {
 }

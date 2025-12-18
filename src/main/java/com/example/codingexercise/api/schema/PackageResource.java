@@ -1,18 +1,19 @@
 package com.example.codingexercise.api.schema;
 
-import com.example.codingexercise.model.Package;
+import com.example.codingexercise.model.PackageOrm;
+import com.example.codingexercise.packages.Package;
 import lombok.Builder;
 
 import java.util.List;
 
 @Builder
 public record PackageResource(long id, String name, String description, List<String> productIds) {
-    public static PackageResource fromModel(final Package model, final List<String> productIds) {
+    public static PackageResource fromModel(final Package model) {
         return PackageResource.builder()
-                .id(model.getId())
-                .name(model.getName())
-                .productIds(productIds)
-                .description(model.getDescription())
+                .id(model.id())
+                .name(model.name())
+                .productIds(model.productIds())
+                .description(model.description())
                 .build();
     }
 }
