@@ -57,11 +57,6 @@ public class PackageController {
                 .orElseThrow(EntityNotFoundException::new);
     }
 
-    @RequestMapping(method = RequestMethod.GET, value = "/products")
-    public List<Product> getProducts() {
-        return productService.all();
-    }
-
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
     public PackageResource update(@PathVariable String id, @RequestBody ChangePackageRequest request) {
         final var parsedId = Long.parseLong(id);
