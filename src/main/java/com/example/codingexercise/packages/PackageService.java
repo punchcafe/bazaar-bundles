@@ -1,11 +1,11 @@
 package com.example.codingexercise.packages;
 
-import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.PackageOrm;
 import com.example.codingexercise.model.PackageProduct;
 import com.example.codingexercise.model.PackageProductId;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
+import lombok.NonNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -13,11 +13,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.toList;
-
+/**
+ * The PackageService encapsulates all persistent operations involving Packages.
+ */
 @Component
 public class PackageService {
+    // TODO: add unit tests.
 
     private final PackageRepository packageRepository;
     private final PackageProductRepository packageProductRepository;
@@ -30,6 +31,11 @@ public class PackageService {
         this.packageProductRepository = packageProductRepository;
     }
 
+    /**
+     * Retrieves a package by its id.
+     * @param id the id of the package
+     * @return an optional containing the package. Empty if no package found with that ID.
+     */
     public Optional<Package> get(final long id) {
         final var existingPackage = packageRepository.findById(id);
         if(existingPackage.isEmpty()) {
@@ -39,6 +45,14 @@ public class PackageService {
         return Optional.of(ormToModel(existingPackage.get(), packageProducts));
     }
 
+    /**
+     * Create a Package with the given parameters.
+     *
+     * @param name the human-readable name for the package.
+     * @param description the human-readable description of the package
+     * @param productIds the ids of all products in this package.
+     * @return the created package.
+     */
     public Package create(final String name, final String description, final List<String> productIds) {
         final var newEntity = PackageOrm.builder()
                 .name(name)
@@ -56,7 +70,18 @@ public class PackageService {
         return ormToModel(createdPackage, savedProducts);
     }
 
-    public Package update(final long id, final String name, final String description, final List<String> productIds) {
+    /**
+     * Updates a given package with the params.
+     * Note that this updates _all_ passed values, so anything null or empty will overrwite the old value.
+     * If the referenced package doesn't exist, this will through an EntityNotFound exception.
+     *
+     * @param id the id of the package to update
+     * @param name the new human-readable name for the package
+     * @param description the new human-readable description for the package
+     * @param productIds ids of all products in this package.
+     * @return the updated package.
+     */
+    public Package update(final long id, final String name, final String description, @NonNull final List<String> productIds) {
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         final var existingProducts = lookupProducts(existingPackage.getId());
 
@@ -90,6 +115,13 @@ public class PackageService {
         return ormToModel(persistedEntity, updatedProducts);
     }
 
+    /**
+     * Retrieves all packages for a given page size and number.
+     *
+     * @param pageNumber the size of the page
+     * @param pageSize the index (0 being the first) of the page.
+     * @return the list of packages on that page.
+     */
     public List<Package> pagenatedPackages(final int pageNumber, final int pageSize) {
 
         final var pageRequest = PageRequest.of(pageNumber,pageSize);
@@ -110,7 +142,14 @@ public class PackageService {
                 .toList();
     }
 
+    /**
+     * Deletes the given package.
+     * Throws an EntityNotFoundException if the package doesn't exist.
+     *
+     * @param id the id of the package to delete.
+     */
     public void delete(final long id) {
+        // TODO: make transactional
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         final var packageProducts = lookupProducts(existingPackage.getId());
         this.packageProductRepository.deleteAll(packageProducts);
