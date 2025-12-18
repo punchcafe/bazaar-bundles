@@ -9,4 +9,5 @@ import java.util.List;
 public interface PackageProductRepository extends JpaRepository<PackageProduct, PackageProductId> {
 
     List<PackageProduct> findAllById_PackageId(long packageId);
+    List<PackageProduct> findAllById_PackageIdIn(List<Long> packageIds);
 }

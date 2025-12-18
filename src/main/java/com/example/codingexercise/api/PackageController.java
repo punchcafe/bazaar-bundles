@@ -3,6 +3,7 @@ package com.example.codingexercise.api;
 import com.example.codingexercise.api.errors.EntityNotFoundException;
 import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
+import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
 import com.example.codingexercise.model.PackageProduct;
@@ -10,13 +11,19 @@ import com.example.codingexercise.model.PackageProductId;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.swing.text.html.Option;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 
 @RestController
 public class PackageController {
@@ -62,6 +69,41 @@ public class PackageController {
                 .map(PackageProductId::getProductId)
                 .toList();
         return PackageResource.fromModel(lookup(id), packageIds);
+    }
+
+    @RequestMapping(method = RequestMethod.GET, value = "/packages")
+    public ListPackageResponse list(
+            @RequestParam(value = "page_size", defaultValue = "10") String pageSizeString,
+            @RequestParam(value = "page_number", defaultValue = "0") String pageNumberString
+    ) {
+        final var pageSize = Integer.parseInt(pageSizeString);
+        final var pageNumber = Integer.parseInt(pageNumberString);
+        final var pageRequest = PageRequest.of(pageNumber,pageSize);
+
+        final var allPackages = packageRepository.findAll(pageRequest);
+        final var allPackageIds = allPackages.stream().map(Package::getId).toList();
+        final var allPackageProducts = packageProductRepository.findAllById_PackageIdIn(allPackageIds)
+                .stream()
+                .map(PackageProduct::getId)
+                .collect(
+                        Collectors.groupingBy(PackageProductId::getPackageId,
+                        mapping(PackageProductId::getProductId, toList())
+                        ));
+
+        final var resultEntries = allPackages
+                .stream()
+                .map(packageEnity ->
+                    PackageResource.fromModel(
+                            packageEnity,
+                            allPackageProducts.getOrDefault(packageEnity.getId(), List.of()))
+                )
+                .toList();
+
+        return ListPackageResponse.builder()
+                .packages(resultEntries)
+                .pageSize(pageSize)
+                .pageNumber(pageNumber)
+                .build();
     }
 
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")

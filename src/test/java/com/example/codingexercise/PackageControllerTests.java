@@ -2,10 +2,15 @@ package com.example.codingexercise;
 
 import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
+import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.model.Package;
+import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assumptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -15,9 +20,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.function.Function;
 
+import static com.fasterxml.jackson.databind.type.LogicalType.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
+@Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PackageControllerTests {
 
@@ -29,11 +37,15 @@ class PackageControllerTests {
 
 	private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
+    private final PackageProductRepository packagePackageRepository;
 
     @Autowired
-    PackageControllerTests(TestRestTemplate restTemplate, PackageRepository packageRepository) {
+    PackageControllerTests(final TestRestTemplate restTemplate,
+                           final PackageRepository packageRepository,
+                           final PackageProductRepository packagePackageRepository) {
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
+        this.packagePackageRepository = packagePackageRepository;
     }
 
     // TODO: add validations for invalid and null parameters
@@ -347,6 +359,9 @@ class PackageControllerTests {
     }
 
 
+    // TODO:
+    // Ensure nothing else is deleted, (including products)
+
     @Test
     void deletePackage_returns400IfInvalidID() {
         // Act
@@ -369,6 +384,105 @@ class PackageControllerTests {
         assertEquals(new ErrorResponse("package not found"), deleteResponse.getBody());
     }
 
+    // TODO: add test cases for
+    // Max page size
+    // default pagination
+    // empty case
+    // Invalid parameters (negative, 0)
+
+    record ListTestCase(int pageSize, int pageNumber, List<Integer> expectedEntitySeeds){};
+
+    @Test
+    void listPackages_correctlyPaginatesByParameters() {
+        // Default ordering is by insertion order, so we know this creates 10 ordered
+        // packages using seed 0..9
+
+        generateEmptyPackages(10);
+
+        final var cases = List.of(
+                new ListTestCase(1, 0, List.of(0)),
+                new ListTestCase(2, 0, List.of(0, 1)),
+                new ListTestCase(3, 0, List.of(0, 1, 2)),
+                new ListTestCase(3, 1, List.of(3, 4, 5)),
+                new ListTestCase(3, 2, List.of(6, 7, 8)),
+                new ListTestCase(3, 3, List.of(9)),
+                // Out of range
+                new ListTestCase(3, 4, List.of())
+        );
+
+        for(final var paginationCase : cases) {
+            final var response = GET_productPackages(paginationCase.pageSize, paginationCase.pageNumber);
+            final var expectedNames = paginationCase.expectedEntitySeeds.stream()
+                    .map(this::generateName)
+                    .toList();
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            final var actualNames = response.getBody().packages().stream().map(PackageResource::name).toList();
+
+            assertEquals(paginationCase.pageNumber, response.getBody().pageNumber());
+            assertEquals(paginationCase.pageSize, response.getBody().pageSize());
+            assertEquals(expectedNames, actualNames);
+        }
+    }
+
+    @Test
+    void listPackages_containsFullProductEntity() {
+        // Arrange
+
+        final var firstRequest = ChangePackageRequest.builder()
+                .name("Sample")
+                .description("Description")
+                .productIds(List.of("a", "b", "c"))
+                .build();
+
+        final var secondRequest = ChangePackageRequest.builder()
+                .name("OtherSample")
+                .description("Another description")
+                .productIds(List.of("d", "e", "f"))
+                .build();
+
+        final var firstCreated = POST_productPackage(firstRequest);
+        final var secondCreated = POST_productPackage(secondRequest);
+
+        Assumptions.assumeTrue(HttpStatus.CREATED.equals(firstCreated.getStatusCode()));
+        Assumptions.assumeTrue(HttpStatus.CREATED.equals(secondCreated.getStatusCode()));
+
+        final var expectedEntries = List.of(
+                firstCreated.getBody(),
+                secondCreated.getBody()
+        );
+
+        // Act
+
+        final var response = GET_productPackages(2, 0);
+
+        // Assert
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        // May need to update this in case productID ordering (not-guaranteed) creates equality issues.
+        assertEquals(expectedEntries, response.getBody().packages());
+    }
+
+    private void generateEmptyPackages(final int count) {
+        for(int i = 0; i < count; i++){
+            final var request = ChangePackageRequest.builder()
+                    .name(generateName(i))
+                    .productIds(List.of())
+                    .build();
+            final var created = POST_productPackage(request);
+            Assumptions.assumeTrue(HttpStatus.CREATED.equals(created.getStatusCode()));
+        }
+    }
+
+    private String generateName(final int index) {
+        return String.format("list_test_item_%d", index);
+    }
+
+    @BeforeEach
+    public void clearDatabase() {
+        this.packagePackageRepository.deleteAll();
+        this.packageRepository.deleteAll();;
+    }
+
     // TODO: clean this up when ID is a string
 
     private ResponseEntity<PackageResource> GET_productPackage(final String id){
@@ -385,6 +499,15 @@ class PackageControllerTests {
 
     private <T> ResponseEntity<T> GET_productPackage(final String id, Class<T> entityClass){
         return restTemplate.getForEntity("/packages/{id}", entityClass, id);
+    }
+
+
+    private ResponseEntity<ListPackageResponse> GET_productPackages(final int pageSize, final int pageNumber){
+        return restTemplate.getForEntity(
+                "/packages?page_size={pageSize}&page_number={pageNumber}",
+                ListPackageResponse.class,
+                pageSize,
+                pageNumber);
     }
 
 
