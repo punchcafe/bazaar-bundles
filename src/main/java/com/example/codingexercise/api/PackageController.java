@@ -1,10 +1,12 @@
 package com.example.codingexercise.api;
 
 import com.example.codingexercise.api.errors.EntityNotFoundException;
+import com.example.codingexercise.api.errors.InvalidPaginationParameters;
 import com.example.codingexercise.api.schema.ChangePackageRequest;
 import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
+import com.example.codingexercise.config.ApiConfiguration;
 import com.example.codingexercise.model.Package;
 import com.example.codingexercise.model.PackageProduct;
 import com.example.codingexercise.model.PackageProductId;
@@ -16,7 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.text.html.Option;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -30,13 +31,16 @@ public class PackageController {
 
     private final PackageRepository packageRepository;
     private final PackageProductRepository packageProductRepository;
+    private final ApiConfiguration apiConfiguration;
 
     public PackageController(
             final PackageRepository packageRepository,
-            final PackageProductRepository packageProductRepository
+            final PackageProductRepository packageProductRepository,
+            final ApiConfiguration apiConfiguration
     ) {
         this.packageRepository = packageRepository;
         this.packageProductRepository = packageProductRepository;
+        this.apiConfiguration = apiConfiguration;
     }
 
     @ResponseStatus(code=HttpStatus.CREATED)
@@ -76,8 +80,16 @@ public class PackageController {
             @RequestParam(value = "page_size", defaultValue = "10") String pageSizeString,
             @RequestParam(value = "page_number", defaultValue = "0") String pageNumberString
     ) {
-        final var pageSize = Integer.parseInt(pageSizeString);
-        final var pageNumber = Integer.parseInt(pageNumberString);
+        final var pageSize = Integer.min(
+                validatePaginationParamString(pageSizeString),
+                this.apiConfiguration.getMaxPageSize()
+        );
+        final var pageNumber = validatePaginationParamString(pageNumberString);
+
+        if((pageSize <= 0) || pageNumber < 0) {
+            throw new InvalidPaginationParameters();
+        }
+
         final var pageRequest = PageRequest.of(pageNumber,pageSize);
 
         final var allPackages = packageRepository.findAll(pageRequest);
@@ -104,6 +116,14 @@ public class PackageController {
                 .pageSize(pageSize)
                 .pageNumber(pageNumber)
                 .build();
+    }
+
+    private int validatePaginationParamString(final String input) {
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException e) {
+            throw  new InvalidPaginationParameters();
+        }
     }
 
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
@@ -188,6 +208,13 @@ public class PackageController {
         // Consider removing this before production and keeping it all strings at the
         // API level (so this would become 404).
         return new ErrorResponse("invalid id: must be a number");
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidPaginationParameters.class)
+    @ResponseBody
+    private ErrorResponse handleInvalidPaginationParams(final HttpServletRequest req, final Exception ex){
+        return new ErrorResponse("invalid query pagination parameters");
     }
 
     private static PackageProduct buildPackageProduct(final String productId, final long packageId) {
