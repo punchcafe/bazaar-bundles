@@ -10,7 +10,6 @@ import com.example.codingexercise.model.PackageProductId;
 import com.example.codingexercise.repository.PackageProductRepository;
 import com.example.codingexercise.repository.PackageRepository;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @RestController
 public class PackageController {
 
@@ -58,42 +56,23 @@ public class PackageController {
 
     @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
     public PackageResource get(@PathVariable String id) {
-        final var pkg = Optional.of(id)
-                .map(Long::parseLong)
-                .flatMap(packageRepository::findById)
-                .orElseThrow(EntityNotFoundException::new);
-
-        // TODO: replace with JPA annotations
-
-        final var products = packageProductRepository.findAllById_PackageId(pkg.getId())
-                .stream()
+        final var existingPackage = lookup(id);
+        final var packageIds = lookupProducts(existingPackage.getId()).stream()
                 .map(PackageProduct::getId)
                 .map(PackageProductId::getProductId)
                 .toList();
-
-        return PackageResource.fromModel(pkg, products);
+        return PackageResource.fromModel(lookup(id), packageIds);
     }
 
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
     public PackageResource update(@PathVariable String id, @RequestBody ChangePackageRequest request) {
-        final var existingPackage = Optional.of(id)
-                .map(Long::parseLong)
-                .flatMap(packageRepository::findById)
-                .orElseThrow(EntityNotFoundException::new);
+        final var existingPackage = lookup(id);
+        final var existingProducts = lookupProducts(existingPackage.getId());
 
         // TODO: replace with JPA annotations and better joins
         // TODO: extract to serivce
 
-        // Prepare statement
-
-        final var existingProducts = packageProductRepository.findAllById_PackageId(existingPackage.getId())
-                .stream()
-                .toList();
-
-        final var existingProduceIds = existingProducts.stream()
-                .map(PackageProduct::getId)
-                .map(PackageProductId::getProductId)
-                .toList();
+        final var existingProductIds = productIds(existingProducts);
 
         final var updatedEntity = existingPackage.toBuilder()
                 .name(request.name())
@@ -105,7 +84,7 @@ public class PackageController {
                 .toList();
 
         final var addProducts = request.productIds().stream()
-                .filter(productId -> !existingProduceIds.contains(productId))
+                .filter(productId -> !existingProductIds.contains(productId))
                 .map(productId -> buildPackageProduct(productId, existingPackage.getId()))
                 .toList();
 
@@ -146,17 +125,24 @@ public class PackageController {
                 .toList();
     }
 
+    private List<String> productIds(final List<PackageProduct> packageProducts) {
+        return packageProducts.stream()
+                .map(PackageProduct::getId)
+                .map(PackageProductId::getProductId)
+                .toList();
+    }
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseBody
-    ErrorResponse handleNotFound(final HttpServletRequest req, final Exception ex){
+    private ErrorResponse handleNotFound(final HttpServletRequest req, final Exception ex){
         return new ErrorResponse("package not found");
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(NumberFormatException.class)
     @ResponseBody
-    ErrorResponse handleInvalidId(final HttpServletRequest req, final Exception ex){
+    private ErrorResponse handleInvalidId(final HttpServletRequest req, final Exception ex){
         // Consider removing this before production and keeping it all strings at the
         // API level (so this would become 404).
         return new ErrorResponse("invalid id: must be a number");
