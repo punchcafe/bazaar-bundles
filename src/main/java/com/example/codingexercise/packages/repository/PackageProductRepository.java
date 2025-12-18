@@ -1,7 +1,7 @@
-package com.example.codingexercise.repository;
+package com.example.codingexercise.packages.repository;
 
-import com.example.codingexercise.model.PackageProduct;
-import com.example.codingexercise.model.PackageProductId;
+import com.example.codingexercise.packages.model.PackageProduct;
+import com.example.codingexercise.packages.model.PackageProductId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

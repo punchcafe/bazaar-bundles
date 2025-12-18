@@ -1,6 +1,6 @@
-package com.example.codingexercise.repository;
+package com.example.codingexercise.packages.repository;
 
-import com.example.codingexercise.model.PackageOrm;
+import com.example.codingexercise.packages.model.PackageOrm;
 import jakarta.annotation.Nonnull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

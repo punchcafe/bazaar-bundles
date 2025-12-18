@@ -1,10 +1,10 @@
 package com.example.codingexercise.packages;
 
-import com.example.codingexercise.model.PackageOrm;
-import com.example.codingexercise.model.PackageProduct;
-import com.example.codingexercise.model.PackageProductId;
-import com.example.codingexercise.repository.PackageProductRepository;
-import com.example.codingexercise.repository.PackageRepository;
+import com.example.codingexercise.packages.model.PackageOrm;
+import com.example.codingexercise.packages.model.PackageProduct;
+import com.example.codingexercise.packages.model.PackageProductId;
+import com.example.codingexercise.packages.repository.PackageProductRepository;
+import com.example.codingexercise.packages.repository.PackageRepository;
 import lombok.NonNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;

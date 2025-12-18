@@ -1,6 +1,5 @@
 package com.example.codingexercise.api.schema;
 
-import com.example.codingexercise.model.PackageOrm;
 import com.example.codingexercise.packages.Package;
 import lombok.Builder;
 
