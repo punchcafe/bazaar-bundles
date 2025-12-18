@@ -7,34 +7,43 @@ import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.config.ApiConfiguration;
+import com.example.codingexercise.packages.Package;
 import com.example.codingexercise.packages.PackageService;
+import com.example.codingexercise.products.Product;
+import com.example.codingexercise.products.ProductService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 
+@Slf4j
 @RestController
 public class PackageController {
 
     private final ApiConfiguration apiConfiguration;
     private final PackageService packageService;
+    private final ProductService productService;
 
     public PackageController(
             final ApiConfiguration apiConfiguration,
-            final PackageService packageService
-    ) {
+            final PackageService packageService,
+            final ProductService productService
+            ) {
         this.apiConfiguration = apiConfiguration;
         this.packageService = packageService;
+        this.productService = productService;
     }
 
     @ResponseStatus(code=HttpStatus.CREATED)
     @RequestMapping(method = RequestMethod.POST, value = "/packages")
     public PackageResource create(@RequestBody ChangePackageRequest request) {
         final var createdPackage = packageService.create(request.name(), request.description(), request.productIds());
-        return PackageResource.fromModel(createdPackage);
+        return convertModelToApiResource(createdPackage);
     }
 
     @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
@@ -42,8 +51,13 @@ public class PackageController {
          return Optional.of(id)
                 .map(Long::parseLong)
                 .flatMap(packageService::get)
-                 .map(PackageResource::fromModel)
+                 .map(this::convertModelToApiResource)
                 .orElseThrow(EntityNotFoundException::new);
+    }
+
+    @RequestMapping(method = RequestMethod.GET, value = "/products")
+    public List<Product> getProducts() {
+        return productService.all();
     }
 
     @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
@@ -55,7 +69,7 @@ public class PackageController {
                 request.description(),
                 request.productIds()
         );
-        return PackageResource.fromModel(updatedPackage);
+        return convertModelToApiResource(updatedPackage);
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -82,7 +96,7 @@ public class PackageController {
         }
 
         final var resultEntries = packageService.pagenatedPackages(pageNumber, pageSize).stream()
-                .map(PackageResource::fromModel)
+                .map(this::convertModelToApiResource)
                 .toList();
 
         return ListPackageResponse.builder()
@@ -124,5 +138,25 @@ public class PackageController {
         return new ErrorResponse("invalid query pagination parameters");
     }
 
+    private PackageResource convertModelToApiResource(final Package model) {
+        final var totalPrice = model.productIds().stream()
+                .map(productId -> {
+                    // TODO: confirm business requirements for this case.
+                    final var productCost = this.productService.lookup(productId).map(Product::usdPrice);
+                    if(productCost.isEmpty()) {
+                        log.error(String.format("Unexpected error: package ID %d contains unknown product ID %s", model.id(), productId));
+                    }
+                    return productCost.orElse(0);
+                })
+                .reduce(Integer::sum)
+                .orElse(0);
 
+        return PackageResource.builder()
+                .id(model.id())
+                .name(model.name())
+                .productIds(model.productIds())
+                .description(model.description())
+                .totalPrice(totalPrice)
+                .build();
+    }
 }

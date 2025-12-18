@@ -5,14 +5,5 @@ import lombok.Builder;
 
 import java.util.List;
 
-@Builder
-public record PackageResource(long id, String name, String description, List<String> productIds) {
-    public static PackageResource fromModel(final Package model) {
-        return PackageResource.builder()
-                .id(model.id())
-                .name(model.name())
-                .productIds(model.productIds())
-                .description(model.description())
-                .build();
-    }
-}
+@Builder(toBuilder = true)
+public record PackageResource(long id, String name, String description, List<String> productIds, int totalPrice) { }

@@ -5,17 +5,19 @@ import com.example.codingexercise.api.schema.ErrorResponse;
 import com.example.codingexercise.api.schema.ListPackageResponse;
 import com.example.codingexercise.api.schema.PackageResource;
 import com.example.codingexercise.config.ApiConfiguration;
-import com.example.codingexercise.packages.model.PackageOrm;
 import com.example.codingexercise.packages.Package;
 import com.example.codingexercise.packages.PackageService;
 import com.example.codingexercise.packages.repository.PackageProductRepository;
 import com.example.codingexercise.packages.repository.PackageRepository;
+import com.example.codingexercise.products.Product;
+import com.example.codingexercise.products.ProductsCache;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assumptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -23,8 +25,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -36,6 +40,24 @@ class PackageControllerTests {
     private final static String UPDATED_PRODUCT_NAME = "Updated Test Name";
     private final static String UPDATED_PRODUCT_DESCRIPTION = "Updated Test Description";
 
+    private final static String SAMPLE_PRODUCT_ID_1 = "VqKb4tyj9V6i";
+    private final static String SAMPLE_PRODUCT_ID_2 = "DXSQpv6XVeJm";
+    private final static String SAMPLE_PRODUCT_ID_3 = "7dgX6XzU3Wds";
+    private final static String SAMPLE_PRODUCT_ID_4 = "PKM5pGAh9yGm";
+
+    private final static Product SAMPLE_PRODUCT_1 = new Product(SAMPLE_PRODUCT_ID_1, "Shield", 1149);
+    private final static Product SAMPLE_PRODUCT_2 = new Product(SAMPLE_PRODUCT_ID_2, "Helmet", 999);
+    private final static Product SAMPLE_PRODUCT_3 = new Product(SAMPLE_PRODUCT_ID_3, "Sword", 899);
+    private final static Product SAMPLE_PRODUCT_4 = new Product(SAMPLE_PRODUCT_ID_4, "Axe", 799);
+
+    private final static Map<String, Product> SAMPLE_PRODUCT_CACHE = Map.of(
+            SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_1,
+            SAMPLE_PRODUCT_ID_2, SAMPLE_PRODUCT_2,
+            SAMPLE_PRODUCT_ID_3, SAMPLE_PRODUCT_3,
+            SAMPLE_PRODUCT_ID_4, SAMPLE_PRODUCT_4
+    );
+
+    @MockBean private final ProductsCache productsCache;
 	private final TestRestTemplate restTemplate;
     private final PackageRepository packageRepository;
     private final PackageProductRepository packagePackageRepository;
@@ -43,11 +65,14 @@ class PackageControllerTests {
     private final PackageService packageService;
 
     @Autowired
-    PackageControllerTests(final TestRestTemplate restTemplate,
+    PackageControllerTests(
+                            final ProductsCache productsCache,
+                            final TestRestTemplate restTemplate,
                            final PackageRepository packageRepository,
                            final PackageProductRepository packagePackageRepository,
                            final PackageService packageService,
                            final ApiConfiguration apiConfiguration) {
+        this.productsCache = productsCache;
 		this.restTemplate = restTemplate;
         this.packageRepository = packageRepository;
         this.packagePackageRepository = packagePackageRepository;
@@ -152,6 +177,28 @@ class PackageControllerTests {
         // Assert
         assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
         assertEquals(createdBody, getProductPackageResponse.getBody());
+    }
+
+    @Test
+    void createPackage_andGetPackage_includesCalculatedCost() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
+                .build();
+
+        final var expectedPrice = SAMPLE_PRODUCT_1.usdPrice() + SAMPLE_PRODUCT_2.usdPrice();
+        // Act
+        ResponseEntity<PackageResource> response = POST_productPackage(request);
+        PackageResource createdBody = response.getBody();
+        final var createdId = createdBody.id();
+        final var getProductPackageResponse = GET_productPackage(createdId);
+
+        // Assert
+        assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
+        assertEquals(expectedPrice, createdBody.totalPrice());
+        assertEquals(expectedPrice, getProductPackageResponse.getBody().totalPrice());
     }
 
     @Test
@@ -275,6 +322,35 @@ class PackageControllerTests {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(List.of("b", "c"), updatedEntity.productIds());
+    }
+
+    @Test
+    void updatePackage_updatesPriceIfProductsChange() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        Assumptions.assumeTrue(createdEntity.totalPrice() == SAMPLE_PRODUCT_3.usdPrice());
+
+        final var request = ChangePackageRequest.builder()
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3, SAMPLE_PRODUCT_ID_4))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request);
+        final var updatedEntity = response.getBody();
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(SAMPLE_PRODUCT_3.usdPrice() + SAMPLE_PRODUCT_4.usdPrice(), updatedEntity.totalPrice());
     }
 
     @Test
@@ -474,13 +550,13 @@ class PackageControllerTests {
         final var firstRequest = ChangePackageRequest.builder()
                 .name("Sample")
                 .description("Description")
-                .productIds(List.of("a", "b", "c"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_2, SAMPLE_PRODUCT_ID_3))
                 .build();
 
         final var secondRequest = ChangePackageRequest.builder()
                 .name("OtherSample")
                 .description("Another description")
-                .productIds(List.of("d", "e", "f"))
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_4))
                 .build();
 
         final var firstCreated = POST_productPackage(firstRequest);
@@ -501,8 +577,19 @@ class PackageControllerTests {
         // Assert
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        for(int i = 0; i < expectedEntries.size(); i++){
+            final var expected = expectedEntries.get(0);
+            final var actual = response.getBody().packages().get(0);
+            assertEquals(expected.totalPrice(), actual.totalPrice());
+            assertEquals(expected.id(), actual.id());
+            assertEquals(expected.name(), actual.name());
+            assertEquals(expected.description(), actual.description());
+            assertEquals(
+                    expected.productIds().stream().sorted().toList(),
+                    actual.productIds().stream().sorted().toList()
+            );
+        }
         // May need to update this in case productID ordering (not-guaranteed) creates equality issues.
-        assertEquals(expectedEntries, response.getBody().packages());
     }
 
     private void generateEmptyPackages(final int count) {
@@ -524,6 +611,7 @@ class PackageControllerTests {
     public void clearDatabase() {
         this.packagePackageRepository.deleteAll();
         this.packageRepository.deleteAll();;
+        when(productsCache.getCache()).thenReturn(SAMPLE_PRODUCT_CACHE);
     }
 
     // TODO: clean this up when ID is a string
@@ -583,13 +671,8 @@ class PackageControllerTests {
         return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.DELETE, HttpEntity.EMPTY, responseClass);
     }
 
-    private PackageResource provisionProductPackage(final String name, final String description) {
-        final var newPackage = PackageOrm.builder()
-                .name(name)
-                .description(description)
-                .build();
-        final Package created = packageService.create(name, description, List.of());
-        return PackageResource.fromModel(created);
+    private Package provisionProductPackage(final String name, final String description) {
+        return packageService.create(name, description, List.of());
     }
 
 }
