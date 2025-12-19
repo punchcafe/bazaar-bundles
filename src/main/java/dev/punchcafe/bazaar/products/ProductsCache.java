@@ -19,14 +19,14 @@ public class ProductsCache {
         this.client = client;
     }
 
-    @Cacheable
+    @Cacheable("products")
     public Map<String, Product> getCache() {
         return this.client.getAllProducts().stream().collect(Collectors.toMap(Product::id, Function.identity()));
     }
 
     // TODO: add metrics and alerting for this
     @Scheduled(cron = "*/5 * * * *")
-    @CacheEvict
+    @CacheEvict("products")
     void evictCache() {}
 
 }

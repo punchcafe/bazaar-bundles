@@ -18,6 +18,7 @@ public class ApiServiceClient {
     }
 
     public List<Product> getAllProducts() {
+        // TODO: extract to config
         final var entities = restTemplate.getForEntity(
                 "https://product-service.herokuapp.com/api/v1/products",
                 Product[].class
