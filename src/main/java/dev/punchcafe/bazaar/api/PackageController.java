@@ -48,14 +48,14 @@ public class PackageController {
     }
 
     @ResponseStatus(code=HttpStatus.CREATED)
-    @RequestMapping(method = RequestMethod.POST, value = "/packages")
+    @PostMapping(value = "/packages")
     public PackageResource create(@RequestBody ChangePackageRequest request) {
         validateProductIds(request);
         final var createdPackage = packageService.create(request.name(), request.description(), request.productIds());
         return convertModelToApiResource(createdPackage, USD_CURRENCY_LABEL);
     }
 
-    @RequestMapping(method = RequestMethod.GET, value = "/packages/{id}")
+    @GetMapping(value = "/packages/{id}")
     public PackageResource get(
             @PathVariable String id,
             @RequestParam(value = "currency", defaultValue = USD_CURRENCY_LABEL) final String currency
@@ -67,7 +67,7 @@ public class PackageController {
                 .orElseThrow(EntityNotFoundException::new);
     }
 
-    @RequestMapping(method = RequestMethod.PUT, value = "/packages/{id}")
+    @PutMapping(value = "/packages/{id}")
     public PackageResource update(@PathVariable String id, @RequestBody ChangePackageRequest request) {
         final var parsedId = Long.parseLong(id);
         validateProductIds(request);
@@ -80,14 +80,15 @@ public class PackageController {
         return convertModelToApiResource(updatedPackage, USD_CURRENCY_LABEL);
     }
 
+    @DeleteMapping(value = "/packages/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @RequestMapping(method = RequestMethod.DELETE, value = "/packages/{id}")
     public ResponseEntity<Void> delete(@PathVariable String id) {
         final var parsedId = Long.parseLong(id);
         this.packageService.delete(parsedId);
         return ResponseEntity.noContent().build();
     }
-    @RequestMapping(method = RequestMethod.GET, value = "/packages")
+
+    @GetMapping(value = "/packages")
     public ListPackageResponse list(
             @RequestParam(value = "page_size", defaultValue = "10") String pageSizeString,
             @RequestParam(value = "page_number", defaultValue = "0") String pageNumberString,
