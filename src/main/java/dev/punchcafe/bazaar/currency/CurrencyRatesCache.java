@@ -20,6 +20,7 @@ public class CurrencyRatesCache {
 
     // TODO: handle edge case failure here
     // TODO: prometheus gauge for date of latest currency?
+    // TODO: add unit testing
     @Cacheable("currency-rates")
     public CurrencyApiResponse fetchRates() {
         // TODO: maybe extract url to env var?
