@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import static dev.punchcafe.bazaar.currency.CurrencyService.USD_CURRENCY_LABEL;
@@ -124,11 +125,16 @@ public class PackageController {
     private void validateProductIds(final ChangePackageRequest request) {
         final var anyInvalid = request.productIds()
                 .stream()
-                .map(this.productService::lookup)
-                .anyMatch(Optional::isEmpty);
+                .anyMatch(this::isInvalidProductId);
         if(anyInvalid) throw new UnknownProductId();
     }
 
+    private boolean isInvalidProductId(final String productId) {
+        if(Objects.isNull(productId)) {
+            return true;
+        }
+        return this.productService.lookup(productId).isEmpty();
+    }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
