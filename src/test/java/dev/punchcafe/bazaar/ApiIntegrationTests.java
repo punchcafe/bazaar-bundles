@@ -102,7 +102,7 @@ class ApiIntegrationTests {
                 new CurrencyApiResponse("USD", "2025-12-18", SAMPLE_CONVERSION_RATES)
         );
     }
-    // TODO: add validations for invalid and null parameters
+    // TODO: add validations for invalid and null parameters, null list entries etc.
     @Test
     void createPackage_returns201AndCreatedPackage() {
         // Arrange
@@ -177,7 +177,6 @@ class ApiIntegrationTests {
         assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .containsExactlyInAnyOrderElementsOf(responseBody.productIds());
     }
-    // TODO: validate against duplicate productIds
 
     @Test
     void createPackageWithProductIds_andGetPackage_returnsCreatedProductIds() {
@@ -240,6 +239,23 @@ class ApiIntegrationTests {
         assertEquals(HttpStatus.OK, getProductPackageResponse.getStatusCode());
         assertEquals(expectedPrice, createdBody.totalPrice());
         assertEquals(expectedPrice, getProductPackageResponse.getBody().totalPrice());
+    }
+
+    @Test
+    void createPackage_returns400IfDuplicateProducts() {
+        // Arrange
+        final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_1))
+                .build();
+
+        // Act
+        ResponseEntity<ErrorResponse> response = POST_productPackage(request, ErrorResponse.class);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("productIds may not contain duplicates"),response.getBody());
     }
 
     @Test
@@ -536,6 +552,31 @@ class ApiIntegrationTests {
     }
 
     @Test
+    void updatePackage_returns400IfDuplicateProductIds() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_3))
+                .build();
+
+        ResponseEntity<PackageResource> creationResponse = POST_productPackage(createRequest);
+        PackageResource createdEntity = creationResponse.getBody();
+
+        final var request = ChangePackageRequest.builder()
+                .name(UPDATED_PRODUCT_NAME)
+                .description(UPDATED_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_1))
+                .build();
+
+        // Act
+        final var response = PUT_productPackage(createdEntity.id(), request, ErrorResponse.class);
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("productIds may not contain duplicates"), response.getBody());
+    }
+
+    @Test
     void updatePackage_persistsChanges() {
         // Arrange
         final var createRequest = ChangePackageRequest.builder()
@@ -755,6 +796,8 @@ class ApiIntegrationTests {
     }
 
     // TODO: clean this up when ID is a string
+    // TODO: rename functions to not be product packages
+    // TODO: version the path
 
     private ResponseEntity<PackageResource> GET_productPackageWithCurrency(final long id, final String currency){
         return restTemplate.getForEntity("/packages/{id}?currency={cur}", PackageResource.class, id, currency);

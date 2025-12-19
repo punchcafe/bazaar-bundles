@@ -1,4 +1,4 @@
-package dev.punchcafe.bazaar.packages;
+package dev.punchcafe.bazaar.packages.exceptions;
 
 public class EntityNotFoundException extends RuntimeException {
 }
