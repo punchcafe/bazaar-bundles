@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  bazaar:
+    build:
+      context: .
+      dockerfile: release.dockerfile
+    ports:
+      - '8085:8080'
+    environment:
+      - PRODUCTS_API_USERNAME=${PRODUCTS_API_USERNAME}
+      - PRODUCTS_API_PASSWORD=${PRODUCTS_API_PASSWORD}
+    depends_on:
+      - mysql
+  
+  mysql:
+    image: 'mysql:latest'
+    environment:
+      - 'MYSQL_ROOT_PASSWORD=guest'
+    ports:
+      - '3306:3306'
