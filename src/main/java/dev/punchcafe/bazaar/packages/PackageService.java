@@ -5,6 +5,7 @@ import dev.punchcafe.bazaar.packages.exceptions.EntityNotFoundException;
 import dev.punchcafe.bazaar.packages.model.PackageOrm;
 import dev.punchcafe.bazaar.packages.model.PackageProduct;
 import dev.punchcafe.bazaar.packages.model.PackageProductId;
+import dev.punchcafe.bazaar.packages.repository.AtomicOperator;
 import dev.punchcafe.bazaar.packages.repository.PackageProductRepository;
 import dev.punchcafe.bazaar.packages.repository.PackageRepository;
 import lombok.NonNull;
@@ -25,13 +26,16 @@ public class PackageService {
 
     private final PackageRepository packageRepository;
     private final PackageProductRepository packageProductRepository;
+    private final AtomicOperator atomicOperator;
 
     public PackageService(
             final PackageRepository packageRepository,
-            final PackageProductRepository packageProductRepository
+            final PackageProductRepository packageProductRepository,
+            final AtomicOperator atomicOperator
     ) {
         this.packageRepository = packageRepository;
         this.packageProductRepository = packageProductRepository;
+        this.atomicOperator = atomicOperator;
     }
 
     /**
@@ -91,8 +95,6 @@ public class PackageService {
         final var existingProducts = lookupProducts(existingPackage.getId());
 
         // TODO: replace with JPA annotations and better joins
-        // TODO: extract to serivce
-
         final var existingProductIds = productIds(existingProducts);
 
         final var updatedEntity = existingPackage.toBuilder()
@@ -109,12 +111,7 @@ public class PackageService {
                 .map(productId -> buildPackageProduct(productId, existingPackage.getId()))
                 .toList();
 
-        // TODO: add to transaction
-
-        final var persistedEntity = this.packageRepository.save(updatedEntity);
-        this.packageProductRepository.deleteAll(deletedProducts);
-        this.packageProductRepository.saveAll(addedProducts);
-
+        final var persistedEntity = this.atomicOperator.updatePackageAndProducts(updatedEntity, addedProducts, deletedProducts);
         final var updatedProducts = packageProductRepository.findAllById_PackageId(existingPackage.getId());
 
         return ormToModel(persistedEntity, updatedProducts);
@@ -154,11 +151,8 @@ public class PackageService {
      * @param id the id of the package to delete.
      */
     public void delete(final long id) {
-        // TODO: make transactional
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
-        final var packageProducts = lookupProducts(existingPackage.getId());
-        this.packageProductRepository.deleteAll(packageProducts);
-        this.packageRepository.delete(existingPackage);
+        this.atomicOperator.deletePackageAndProducts(existingPackage);
     }
 
     private List<PackageProduct> lookupProducts(final long id){

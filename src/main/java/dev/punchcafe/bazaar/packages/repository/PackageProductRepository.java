@@ -10,4 +10,5 @@ public interface PackageProductRepository extends JpaRepository<PackageProduct, 
 
     List<PackageProduct> findAllById_PackageId(long packageId);
     List<PackageProduct> findAllById_PackageIdIn(List<Long> packageIds);
+    void deleteAllById_PackageId(long packageId);
 }
