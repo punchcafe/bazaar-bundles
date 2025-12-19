@@ -8,6 +8,7 @@ import dev.punchcafe.bazaar.packages.model.PackageProductId;
 import dev.punchcafe.bazaar.packages.repository.AtomicOperator;
 import dev.punchcafe.bazaar.packages.repository.PackageProductRepository;
 import dev.punchcafe.bazaar.packages.repository.PackageRepository;
+import io.micrometer.core.annotation.Timed;
 import lombok.NonNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,7 @@ public class PackageService {
      * @param id the id of the package
      * @return an optional containing the package. Empty if no package found with that ID.
      */
+    @Timed("get_package")
     public Optional<Package> get(final long id) {
         final var existingPackage = packageRepository.findById(id);
         if(existingPackage.isEmpty()) {
@@ -60,6 +62,7 @@ public class PackageService {
      * @param productIds the ids of all products in this package.
      * @return the created package.
      */
+    @Timed("create_package")
     public Package create(final String name, final String description, final List<String> productIds) {
         validateProductIds(productIds);
         final var newEntity = PackageOrm.builder()
@@ -89,6 +92,7 @@ public class PackageService {
      * @param productIds ids of all products in this package.
      * @return the updated package.
      */
+    @Timed("update_packages")
     public Package update(final long id, final String name, final String description, @NonNull final List<String> productIds) {
         validateProductIds(productIds);
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
@@ -124,6 +128,7 @@ public class PackageService {
      * @param pageSize the index (0 being the first) of the page.
      * @return the list of packages on that page.
      */
+    @Timed("pagenate_packages")
     public List<Package> pagenatedPackages(final int pageNumber, final int pageSize) {
 
         final var pageRequest = PageRequest.of(pageNumber,pageSize);
@@ -150,6 +155,7 @@ public class PackageService {
      *
      * @param id the id of the package to delete.
      */
+    @Timed("delete_package")
     public void delete(final long id) {
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         this.atomicOperator.deletePackageAndProducts(existingPackage);

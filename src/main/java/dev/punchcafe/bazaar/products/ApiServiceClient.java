@@ -1,6 +1,7 @@
 package dev.punchcafe.bazaar.products;
 
 import dev.punchcafe.bazaar.config.ProductsApiConfiguration;
+import io.micrometer.core.annotation.Timed;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ public class ApiServiceClient {
         this.restTemplate = builder.basicAuthentication(configuration.getUsername(), configuration.getPassword()).build();
     }
 
+    @Timed("fetch_all_products")
     public List<Product> getAllProducts() {
         // TODO: extract to config
         final var entities = restTemplate.getForEntity(
