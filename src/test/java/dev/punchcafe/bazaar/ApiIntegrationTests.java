@@ -749,9 +749,32 @@ class ApiIntegrationTests {
         assertEquals(HttpStatus.NOT_FOUND, getResponse.getStatusCode());
     }
 
+    @Test
+    void deletePackage_onlyDeletesIntendedPackage() {
+        // Arrange
+        final var createRequest = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
+                .productIds(List.of(SAMPLE_PRODUCT_ID_1))
+                .build();
 
-    // TODO:
-    // Ensure nothing else is deleted, (including products)
+        ResponseEntity<PackageResource> toDeleteEntityResponse = POST_productPackage(createRequest);
+        PackageResource toDeletePackage = toDeleteEntityResponse.getBody();
+        ResponseEntity<PackageResource> notToDeleteEntityResponse = POST_productPackage(createRequest);
+        PackageResource notToDeletePackage = notToDeleteEntityResponse.getBody();
+
+        // Act
+        final var deleteResponse = DELETE_productPackage(toDeletePackage.id());
+        Assumptions.assumeTrue(HttpStatus.NO_CONTENT.equals(deleteResponse.getStatusCode()));
+
+        final var getResponse = GET_productPackage(notToDeletePackage.id());
+
+
+        // Assert
+        assertEquals(HttpStatus.OK, getResponse.getStatusCode());
+        // Ensure product IDs unchanged
+        assertEquals(List.of(SAMPLE_PRODUCT_ID_1), getResponse.getBody().productIds());
+    }
 
     @Test
     void deletePackage_returns400IfInvalidID() {
@@ -774,6 +797,7 @@ class ApiIntegrationTests {
         assertEquals(HttpStatus.NOT_FOUND, deleteResponse.getStatusCode());
         assertEquals(new ErrorResponse("package not found"), deleteResponse.getBody());
     }
+
 
     record ListTestCase(int pageSize, int pageNumber, List<Integer> expectedEntitySeeds){};
 
