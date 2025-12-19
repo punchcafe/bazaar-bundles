@@ -29,6 +29,7 @@ import static dev.punchcafe.bazaar.currency.CurrencyService.USD_CURRENCY_LABEL;
 @Slf4j
 @RestController
 public class PackageController {
+
     private final ApiConfiguration apiConfiguration;
     private final PackageService packageService;
     private final ProductService productService;
@@ -86,7 +87,6 @@ public class PackageController {
         this.packageService.delete(parsedId);
         return ResponseEntity.noContent().build();
     }
-
     @RequestMapping(method = RequestMethod.GET, value = "/packages")
     public ListPackageResponse list(
             @RequestParam(value = "page_size", defaultValue = "10") String pageSizeString,

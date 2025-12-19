@@ -27,13 +27,15 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/packages/5",
+					"raw": "http://localhost:8080/api/v1/packages/5",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "8080",
 					"path": [
+						"api",
+						"v1",
 						"packages",
 						"5"
 					]
@@ -54,7 +56,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"name\": \"Swords!\",\r\n    \"description\": \"A collection of swords.\",\r\n    \"productIds\": [\"VqKb4tyj9V6i\", \"DXSQpv6XVeJm\"]\r\n}",
+					"raw": "{\r\n    \"name\": \"Swords!\",\r\n    \"description\": \"A collection of swords.\",\r\n    \"productIds\": [\"VqKb4tyj9V6i\"]\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -62,13 +64,15 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:8080/packages",
+					"raw": "http://localhost:8080/api/v1/packages",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "8080",
 					"path": [
+						"api",
+						"v1",
 						"packages"
 					]
 				}
@@ -87,21 +91,51 @@
 					}
 				],
 				"url": {
-					"raw": "http://localhost:8080/packages/8?currency=gbp",
+					"raw": "http://localhost:8080/api/v1/packages/1?currency=USD",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "8080",
 					"path": [
+						"api",
+						"v1",
 						"packages",
-						"8"
+						"1"
 					],
 					"query": [
 						{
 							"key": "currency",
-							"value": "gbp"
+							"value": "USD"
 						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Package",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "",
+						"value": "",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/api/v1/packages/6",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"v1",
+						"packages",
+						"6"
 					]
 				}
 			},
@@ -119,13 +153,15 @@
 					}
 				],
 				"url": {
-					"raw": "http://localhost:8080/packages?page_size=2&page_number=3&currency=gbp",
+					"raw": "http://localhost:8080/api/v1/packages?page_size=2&page_number=0&currency=gbp",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "8080",
 					"path": [
+						"api",
+						"v1",
 						"packages"
 					],
 					"query": [
@@ -135,7 +171,7 @@
 						},
 						{
 							"key": "page_number",
-							"value": "3"
+							"value": "0"
 						},
 						{
 							"key": "currency",
