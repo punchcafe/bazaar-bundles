@@ -1,5 +1,7 @@
 package dev.punchcafe.bazaar.packages;
 
+import dev.punchcafe.bazaar.packages.exceptions.DuplicateProductIdException;
+import dev.punchcafe.bazaar.packages.exceptions.EntityNotFoundException;
 import dev.punchcafe.bazaar.packages.model.PackageOrm;
 import dev.punchcafe.bazaar.packages.model.PackageProduct;
 import dev.punchcafe.bazaar.packages.model.PackageProductId;
@@ -9,6 +11,7 @@ import lombok.NonNull;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -54,6 +57,7 @@ public class PackageService {
      * @return the created package.
      */
     public Package create(final String name, final String description, final List<String> productIds) {
+        validateProductIds(productIds);
         final var newEntity = PackageOrm.builder()
                 .name(name)
                 .description(description)
@@ -82,6 +86,7 @@ public class PackageService {
      * @return the updated package.
      */
     public Package update(final long id, final String name, final String description, @NonNull final List<String> productIds) {
+        validateProductIds(productIds);
         final var existingPackage = packageRepository.findById(id).orElseThrow(EntityNotFoundException::new);
         final var existingProducts = lookupProducts(existingPackage.getId());
 
@@ -187,5 +192,9 @@ public class PackageService {
                                 .productId(productId)
                                 .build())
                 .build();
+    }
+
+    private void validateProductIds(List<String> productIds) {
+        if(new HashSet<>(productIds).size() != productIds.size()) throw new DuplicateProductIdException();
     }
 }

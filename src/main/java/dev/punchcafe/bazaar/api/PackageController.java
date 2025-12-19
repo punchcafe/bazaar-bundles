@@ -2,7 +2,8 @@ package dev.punchcafe.bazaar.api;
 
 import dev.punchcafe.bazaar.api.errors.UnknownProductId;
 import dev.punchcafe.bazaar.currency.CurrencyService;
-import dev.punchcafe.bazaar.packages.EntityNotFoundException;
+import dev.punchcafe.bazaar.packages.exceptions.DuplicateProductIdException;
+import dev.punchcafe.bazaar.packages.exceptions.EntityNotFoundException;
 import dev.punchcafe.bazaar.api.errors.InvalidPaginationParameters;
 import dev.punchcafe.bazaar.api.schema.ChangePackageRequest;
 import dev.punchcafe.bazaar.api.schema.ErrorResponse;
@@ -150,6 +151,13 @@ public class PackageController {
         // Consider removing this before production and keeping it all strings at the
         // API level (so this would become 404).
         return new ErrorResponse("invalid id: must be a number");
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DuplicateProductIdException.class)
+    @ResponseBody
+    private ErrorResponse handleDuplicateProductIdParams(final HttpServletRequest req, final Exception ex){
+        return new ErrorResponse("productIds may not contain duplicates");
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
