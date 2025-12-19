@@ -26,6 +26,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -102,7 +104,7 @@ class ApiIntegrationTests {
                 new CurrencyApiResponse("USD", "2025-12-18", SAMPLE_CONVERSION_RATES)
         );
     }
-    // TODO: add validations for invalid and null parameters, null list entries etc.
+
     @Test
     void createPackage_returns201AndCreatedPackage() {
         // Arrange
@@ -176,6 +178,58 @@ class ApiIntegrationTests {
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertThat(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .containsExactlyInAnyOrderElementsOf(responseBody.productIds());
+    }
+
+    @Test
+    void createPackage_returns400IfProductIdsContainsNull() {
+        // Arrange
+        final var listWithNull = new ArrayList<String>();
+        listWithNull.add(SAMPLE_PRODUCT_ID_1);
+        listWithNull.add(null);
+
+        final Map<String, Object> request = Map.of(
+                "name", TEST_PRODUCT_NAME,
+                "description", TEST_PRODUCT_DESCRIPTION,
+                "productIds", listWithNull
+        );
+
+        // Act
+        ResponseEntity<ErrorResponse> response = POST_productPackage(request, ErrorResponse.class);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("unknown product ID"), response.getBody());
+    }
+
+    @Test
+    void createPackage_returns400IfAnyFieldsNull() {
+        // Arrange
+        final var baseRequest = Map.of(
+                "name", TEST_PRODUCT_NAME,
+                "description", TEST_PRODUCT_DESCRIPTION,
+                "productIds", List.of()
+        );
+
+        final var cases = baseRequest.keySet().stream()
+                .map(key -> {
+                    final var newRequest = new HashMap<>(baseRequest);
+                    newRequest.remove(key);
+                    return newRequest;
+                })
+                .toList();
+
+
+        // Act
+        for(final var invalidCase : cases) {
+            ResponseEntity<Void> response = POST_productPackage(
+                    invalidCase,
+                    Void.class
+            );
+
+            // Assert
+            // TODO: handle this with same response schema as others
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        }
     }
 
     @Test
@@ -423,6 +477,8 @@ class ApiIntegrationTests {
         PackageResource createdEntity = creationResponse.getBody();
 
         final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of())
                 .build();
 
@@ -450,6 +506,8 @@ class ApiIntegrationTests {
         PackageResource createdEntity = creationResponse.getBody();
 
         final var request = ChangePackageRequest.builder()
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
                 .productIds(List.of(SAMPLE_PRODUCT_ID_1, SAMPLE_PRODUCT_ID_2))
                 .build();
 
@@ -481,6 +539,8 @@ class ApiIntegrationTests {
 
         final var request = ChangePackageRequest.builder()
                 .productIds(List.of(SAMPLE_PRODUCT_ID_3, SAMPLE_PRODUCT_ID_4))
+                .name(TEST_PRODUCT_NAME)
+                .description(TEST_PRODUCT_DESCRIPTION)
                 .build();
 
         // Act
@@ -574,6 +634,63 @@ class ApiIntegrationTests {
         // Assert
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(new ErrorResponse("productIds may not contain duplicates"), response.getBody());
+    }
+
+    @Test
+    void updatePackage_returns400IfProductIdsContainsNull() {
+        // Arrange
+        final var listWithNull = new ArrayList<String>();
+        listWithNull.add(SAMPLE_PRODUCT_ID_1);
+        listWithNull.add(null);
+
+        final Map<String, Object> request = Map.of(
+                "name", TEST_PRODUCT_NAME,
+                "description", TEST_PRODUCT_DESCRIPTION,
+                "productIds", listWithNull
+        );
+
+        // Act
+        // We expect body validation before looking up whether the entity to exist, so
+        // we should see the 400 error even if the id doesn't exist
+        ResponseEntity<ErrorResponse> response = PUT_productPackage("12345", request, ErrorResponse.class);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(new ErrorResponse("unknown product ID"), response.getBody());
+    }
+
+    @Test
+    void updatePackage_returns400IfAnyFieldsNull() {
+        // Arrange
+        final var baseRequest = Map.of(
+                "name", TEST_PRODUCT_NAME,
+                "description", TEST_PRODUCT_DESCRIPTION,
+                "productIds", List.of()
+        );
+
+        final var cases = baseRequest.keySet().stream()
+                .map(key -> {
+                    final var newRequest = new HashMap<>(baseRequest);
+                    newRequest.remove(key);
+                    return newRequest;
+                })
+                .toList();
+
+
+        // Act
+        for(final var invalidCase : cases) {
+            // We expect body validation before looking up whether the entity to exist, so
+            // we should see the 400 error even if the id doesn't exist
+            ResponseEntity<Void> response = PUT_productPackage(
+                    "12345",
+                    invalidCase,
+                    Void.class
+            );
+
+            // Assert
+            // TODO: handle this with same response schema as others
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        }
     }
 
     @Test
@@ -784,6 +901,7 @@ class ApiIntegrationTests {
         for(int i = 0; i < count; i++){
             final var request = ChangePackageRequest.builder()
                     .name(generateName(i))
+                    .description(TEST_PRODUCT_DESCRIPTION)
                     .productIds(List.of())
                     .build();
             final var created = POST_productPackage(request);
@@ -850,6 +968,11 @@ class ApiIntegrationTests {
         return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.PUT, httpRequest, responseClass);
     }
 
+    private <T> ResponseEntity<T> PUT_productPackage(final String id, final Map<String, Object> request, Class<T> responseClass){
+        final HttpEntity<Map<String, Object>> httpRequest = new HttpEntity<>(request);
+        return restTemplate.exchange(String.format("/packages/%s", id), HttpMethod.PUT, httpRequest, responseClass);
+    }
+
     private <T> ResponseEntity<T> PUT_productPackage(final long id, final ChangePackageRequest request, Class<T> responseClass){
         return PUT_productPackage(Long.toString(id), request, responseClass);
     }
@@ -859,6 +982,10 @@ class ApiIntegrationTests {
     }
 
     private <T> ResponseEntity<T> POST_productPackage(final ChangePackageRequest request, Class<T> responseClass){
+        return restTemplate.postForEntity("/packages", request, responseClass);
+    }
+
+    private <T> ResponseEntity<T> POST_productPackage(final Map<String, Object> request, Class<T> responseClass){
         return restTemplate.postForEntity("/packages", request, responseClass);
     }
 
