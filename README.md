@@ -40,5 +40,9 @@ $ > SPRING_DATASOURCE_URL="jdbc:<...your connection url>" \
 
 Once running, the app will be available on `http://localhost:8080`.
 
+## Docs
+When running, you can find the OpenAPI specification for this API under: http://localhost:8080/api/v1/swagger-ui.html.
+The pure OpenAPI spec can be found here: http://localhost:8080/api/v1/docs.
+
 ## Postman
 This app has a postman collection to help get familiar with the API.
