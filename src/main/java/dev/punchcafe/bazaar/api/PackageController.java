@@ -137,6 +137,8 @@ public class PackageController {
         return this.productService.lookup(productId).isEmpty();
     }
 
+    // TODO: Update OpenAPI spec to only include error codes specific to that controller method.
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseBody
